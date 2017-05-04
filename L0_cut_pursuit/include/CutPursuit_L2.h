@@ -61,7 +61,6 @@ class CutPursuit_L2 : public CutPursuit<T>
                    = boost::get(boost::vertex_bundle, this->main_graph);
         VertexIndexMap<T> vertex_index_map = boost::get(boost::vertex_index, this->main_graph);
         std::size_t saturation;
-        T iterativ_reg_strength;
         //stores wether each vertex is B or not
         std::vector<bool> binary_label(this->nVertex);
         //initialize the binary partition with kmeans
