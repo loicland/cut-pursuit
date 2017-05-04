@@ -15,10 +15,11 @@ f the fidelity function
 g a graph-structured regularizer (g = Id for TV, g = 1-kroenecker(.) for potts penalty)
 
 To compile the MATLAB mex file for L0-cut pursuit type the following in MATLAB in the workspace containing the L0_Cut_Pursuit folder:
-'''
+
+```
 mkdir ./L0_Cut_Pursuit/bin
 mex CXXFLAGS="\$CXXFLAGS -pthread -Wall -std=c++11 -fopenmp -O3"...
     LDFLAGS="\$LDFLAGS -fopenmp" L0_Cut_Pursuit/api/L0_cut_pursuit_mex.cpp ...
     -output L0_Cut_Pursuit/bin/L0_cut_pursuit_mex
 addpath('./L0_Cut_Pursuit/bin/')
-'''
+```
