@@ -1,41 +1,41 @@
 #pragma once
-#include "CutPursuitProblem.h"
+#include "CutPursuit.h"
+#include "Common.h"
 
 namespace CP {
 template <typename T>
-class CutPursuit_L2 : public CutPursuitProblem<T>
+class CutPursuit_L2 : public CutPursuit<T>
 {
     public:
+    ~CutPursuit_L2(){
+            };
+    //=============================================================================================
+    //=============================     COMPUTE ENERGY  ===========================================
+    //=============================================================================================
     virtual std::pair<T,T> compute_energy() override
     {
         VertexAttributeMap<T> vertex_attribute_map
-                = boost::get(boost::vertex_bundle, this->mainGraph);
+                = boost::get(boost::vertex_bundle, this->main_graph);
         EdgeAttributeMap<T> edge_attribute_map
-                = boost::get(boost::edge_bundle, this->mainGraph);
-        std::pair<T,T> energyPair;
+                = boost::get(boost::edge_bundle, this->main_graph);
+        //the first element pair_energy of is the fidelity and the second the penalty
+        std::pair<T,T> pair_energy;
         T energy = 0;
-        VertexIterator<T> i_ver;
-//        std::cout << "===="<< std::endl;
-        for (i_ver = boost::vertices(this->mainGraph).first;
-             i_ver!= this->lastIterator; ++i_ver)
+        //#pragma omp parallel for private(i_dim) if (this->parameter.parallel) schedule(static) reduction(+:energy,i)
+        for (std::size_t ind_ver = 0; ind_ver < this->nVertex; ind_ver++)
         {
-            for(int i_dim=0; i_dim<this->dim; i_dim++)
+            VertexDescriptor<T> i_ver = boost::vertex(ind_ver, this->main_graph);
+            for(std::size_t i_dim=0; i_dim<this->dim; i_dim++)
             {
-                energy += .5*vertex_attribute_map(*i_ver).weight
-                        * pow(vertex_attribute_map(*i_ver).observation[i_dim]
-                            - vertex_attribute_map(*i_ver).value[i_dim],2);
+                energy += .5*vertex_attribute_map(i_ver).weight
+                        * pow(vertex_attribute_map(i_ver).observation[i_dim]
+                            - vertex_attribute_map(i_ver).value[i_dim],2);
             }
-
-            //std::cout << "=>" << *i_ver << " " << vertex_attribute_map(*i_ver).inComponent <<std::endl;
-                      //<< " = " << vertex_attribute_map(*i_ver).weight
-//                      << " " << vertex_attribute_map(*i_ver).observation[0]
-//                      << " " << vertex_attribute_map(*i_ver).value[0] << std::endl;
         }
-        energyPair.first = energy;
+        pair_energy.first = energy;
         energy = 0;
-        EdgeIterator<T> i_edg, i_edg_end;
-        for (boost::tie(i_edg, i_edg_end) = boost::edges(this->mainGraph);
-             i_edg != i_edg_end; ++i_edg)
+        EdgeIterator<T> i_edg, i_edg_end = boost::edges(this->main_graph).second;
+        for (i_edg = boost::edges(this->main_graph).first; i_edg != i_edg_end; ++i_edg)
         {
             if (!edge_attribute_map(*i_edg).realEdge)
             {
@@ -44,278 +44,336 @@ class CutPursuit_L2 : public CutPursuitProblem<T>
             energy += .5 * edge_attribute_map(*i_edg).isActive * this->parameter.reg_strenth
                     * edge_attribute_map(*i_edg).weight;
         }
-        energyPair.second = energy;
-        return energyPair;
+        return pair_energy;
     }
     //=============================================================================================
     //=============================        SPLIT        ===========================================
     //=============================================================================================
-    virtual std::size_t split(int ite = 0) override
+    virtual std::size_t split() override
     { // split the graph by trying to find the best binary partition
       // each components is split into B and notB
       // for each components we associate the value h_1 and h_2 to vertices in B or notB
       // the affectation as well as h_1 and h_2 are computed alternatively
         //tic();
         //--------loading structures---------------------------------------------------------------
-
-        int nbComp = this->components.size();
+        std::size_t nb_comp = this->components.size();
         VertexAttributeMap<T> vertex_attribute_map
-                   = boost::get(boost::vertex_bundle, this->mainGraph);
-        VertexIndexMap<T> indexMap = boost::get(boost::vertex_index, this->mainGraph);
+                   = boost::get(boost::vertex_bundle, this->main_graph);
+        VertexIndexMap<T> vertex_index_map = boost::get(boost::vertex_index, this->main_graph);
         std::size_t saturation;
         T iterativ_reg_strength;
-        //initialize h_1 and h_2 with kmeans
-        bool labels[this->nVertex];   //stores wether each vertex is B or notB
-        this->init_labels(labels);
-        T *** centers = new T ** [nbComp];
-        for (int i_com = 0; i_com < nbComp; i_com++)
-        {
-            if (this->saturatedComponent[i_com])
-            {
-                continue;
-            }
-            centers[i_com]    = new T * [2];
-            centers[i_com][0] = new T [this->dim];
-            centers[i_com][1] = new T [this->dim];
-        }
+        //stores wether each vertex is B or not
+        std::vector<bool> binary_label(this->nVertex);
+        //initialize the binary partition with kmeans
+        this->init_labels(binary_label);
+        //centers is the value of each binary component in the optimal partition
+        VectorOfCentroids<T> centers(nb_comp, this->dim);
         //-----main loop----------------------------------------------------------------
-                // the optimal flow is iteratively approximated
-        for (int i_step = 1; i_step <= this->parameter.flow_steps; i_step++)
+        // the optimal flow is iteratively approximated
+        for (std::size_t i_step = 1; i_step <= this->parameter.flow_steps; i_step++)
         {
             //the regularization strength at this step
-            iterativ_reg_strength = this->parameter.reg_strenth;// * i_step / this->parameter.flow_steps;
             //compute h_1 and h_2
-            this->computeCenters(centers, nbComp,labels);
-            this->setCapacities(nbComp, centers, iterativ_reg_strength);
+            centers = VectorOfCentroids<T>(nb_comp, this->dim);
+            this->compute_centers(centers, nb_comp,binary_label);
+            this->set_capacities(centers);
             // update the capacities of the flow graph
-            //compute flow
             boost::boykov_kolmogorov_max_flow(
-                       this->mainGraph,
-                       get(&EdgeAttribute<T>::capacity        , this->mainGraph),
-                       get(&EdgeAttribute<T>::residualCapacity, this->mainGraph),
-                       get(&EdgeAttribute<T>::reverseEdge     , this->mainGraph),
-                       get(&VertexAttribute<T>::color         , this->mainGraph),
-                       get(boost::vertex_index                , this->mainGraph),
+                       this->main_graph,
+                       get(&EdgeAttribute<T>::capacity        , this->main_graph),
+                       get(&EdgeAttribute<T>::residualCapacity, this->main_graph),
+                       get(&EdgeAttribute<T>::edge_reverse     , this->main_graph),
+                       get(&VertexAttribute<T>::color         , this->main_graph),
+                       get(boost::vertex_index                , this->main_graph),
                        this->source,
                        this->sink);
-            for (int i_com = 0; i_com < nbComp; i_com++)
+            for (std::size_t ind_com = 0; ind_com < nb_comp; ind_com++)
             {
-                if (this->saturatedComponent[i_com])
+                if (this->saturated_components[ind_com])
                 {
                     continue;
                 }
-                for (int i_ver = 0;  i_ver < this->components[i_com].size(); i_ver++)
+                for (std::size_t i_ver = 0;  i_ver < this->components[ind_com].size(); i_ver++)
                 {
-                    labels[indexMap(this->components[i_com][i_ver])]
-                          = (vertex_attribute_map(this->components[i_com][i_ver]).color
+                    binary_label[vertex_index_map(this->components[ind_com][i_ver])]
+                          = (vertex_attribute_map(this->components[ind_com][i_ver]).color
                           == vertex_attribute_map(this->sink).color);
-                    /*std::cout << i_com << " " << i_ver << " " << " " << indexMap(this->components[i_com][i_ver])
-                              << " " << vertex_attribute_map(this->components[i_com][i_ver]).color << " "
-                              << labels[indexMap(this->components[i_com][i_ver])]  << std::endl;*/
                  }
              }
         }
-        for (std::size_t i_com = 0; i_com < this->components.size(); ++i_com)
-        {
-            if (this->saturatedComponent[i_com])
-            {
-                continue;
-            }
-            delete [] centers[i_com][0];
-            delete [] centers[i_com][1];
-        }
-        delete [] centers;
         saturation = this->activate_edges();
         return saturation;
     }
     //=============================================================================================
-    //=============================      INIT_L2        ===========================================
+    //=============================      INIT_L2 ====== ===========================================
     //=============================================================================================
-    inline void init_labels(bool * labels)
+    inline void init_labels(std::vector<bool> & binary_label)
     { //-----initialize the labelling for each components with kmeans------------------------------
         VertexAttributeMap<T> vertex_attribute_map
-                = boost::get(boost::vertex_bundle, this->mainGraph);
-        VertexIndexMap<T> indexMap = boost::get(boost::vertex_index, this->mainGraph);
-        int i_com_int = -1;
-        for (componentIterator<T> i_com = this->components.begin();
-             i_com != this->components.end(); ++i_com)
-        {            
-            i_com_int++;
-            //std::cout << "===>" << i_com_int << "  = " << i_com->size();
-            if (this->saturatedComponent[i_com_int])
+                = boost::get(boost::vertex_bundle, this->main_graph);
+        VertexIndexMap<T> vertex_index_map = boost::get(boost::vertex_index, this->main_graph);
+        std::size_t nb_comp = this->components.size();
+        std::size_t ind_com;
+        //#pragma omp parallel for private(ind_com) if (this->parameter.parallel && nb_comp>8) schedule(dynamic)
+        for (ind_com = 0; ind_com < nb_comp; ind_com++)
+        {
+            std::vector< std::vector<T> > kernels(2, std::vector<T>(this->dim));
+            T total_weight[2];
+            T best_energy;
+            T current_energy;
+            std::size_t comp_size = this->components[ind_com].size();
+            std::vector<bool> potential_label(comp_size);    
+            std::vector<T> energy_array(comp_size);
+            
+            if (this->saturated_components[ind_com] || comp_size <= 1)
             {
                 continue;
             }
-            cv::Mat data(i_com->size(), this->dim, CV_32F,0.);//, labels_kmean(i_com->size(), 1, int,0.);
-            std::vector<int> labels_kmean;
-            std::size_t indexInData = 0;
-            for (VertexComponentIterator<T> i_ver = i_com->begin();
-                 i_ver != i_com->end(); ++i_ver)
-            {
-                if (vertex_attribute_map[*i_ver].weight>0)
+            for (std::size_t init_kmeans = 0; init_kmeans < this->parameter.kmeans_resampling; init_kmeans++)
+            {//proceed to several initilialisation of kmeans and pick up the best one
+                //----- initialization with KM++ ------------------
+                int first_kernel  = std::rand() % comp_size, second_kernel = 0; // first kernel attributed
+                for(std::size_t i_dim=0; i_dim < this->dim; i_dim++)
                 {
-                    for(int i_dim=0; i_dim < this->dim; i_dim++)
-                    {
-                        data.at<float>(indexInData,i_dim) = vertex_attribute_map[*i_ver].observation[i_dim];
-                    }
-                    indexInData++;
+                   kernels[0][i_dim] = vertex_attribute_map(this->components[ind_com][first_kernel ]).observation[i_dim];
                 }
-            }
-            if (indexInData>1)
-            {
-                int sumLabel = 0;
-                data = data(cv::Rect_<T> (0,0,this->dim,indexInData));
-                cv::kmeans(data,2,labels_kmean,cv::TermCriteria(CV_TERMCRIT_ITER, this->parameter.kmeans_ite, 1.0)
-                          ,this->parameter.kmeans_resampling, cv::KMEANS_PP_CENTERS);
-                indexInData = 0;
-                for (VertexComponentIterator<T> i_ver = i_com->begin();
-                     i_ver != i_com->end(); ++i_ver)
+                best_energy = 0; //now compute the square distance of each point to this kernel
+                for (std::size_t i_ver = 0;  i_ver < comp_size; i_ver++)
                 {
-                    if (vertex_attribute_map[*i_ver].weight>0)
+                    energy_array[i_ver] = 0;
+                    for(std::size_t i_dim=0; i_dim < this->dim; i_dim++)
                     {
-                        labels[indexMap(*i_ver)] = (labels_kmean.at(indexInData)==0);
-                        sumLabel+= (labels_kmean.at(indexInData)==0);
-                        indexInData++;
+                        energy_array[i_ver] += pow(vertex_attribute_map(this->components[ind_com][i_ver]).observation[i_dim]
+                                        - kernels[0][i_dim],2) * vertex_attribute_map(this->components[ind_com][i_ver]).weight;
                     }
-                    else
-                    {
-                        labels[indexMap(*i_ver)] = true;
+                    best_energy += energy_array[i_ver];
+                } // we now generate a random number to determinate which node will be the second kernel
+                T random_sample = ((T)(rand())) / ((T)(RAND_MAX));
+                current_energy = best_energy * random_sample;
+                for (std::size_t i_ver = 0;  i_ver < comp_size; i_ver++)
+                {
+                    current_energy -= energy_array[i_ver];
+                    if (current_energy < 0)
+                    { //we have selected the second kernel
+                        second_kernel = i_ver;
+                        break;
                     }
                 }
-                //std::cout << " / " << sumLabel << std::endl;
-            }
-            else
-            {
-                 labels[indexMap(*(i_com->begin()))] = true;
-                 //std::cout <<  std::endl;
+                for(std::size_t i_dim=0; i_dim < this->dim; i_dim++)
+                { // now fill the second kernel
+                   kernels[1][i_dim] = vertex_attribute_map(this->components[ind_com][second_kernel]).observation[i_dim];
+                }
+                //----main kmeans loop-----
+                for (std::size_t ite_kmeans = 0; ite_kmeans < this->parameter.kmeans_ite; ite_kmeans++)
+                {
+                    //--affectation step: associate each node with its closest kernel-------------------
+                    for (std::size_t i_ver = 0;  i_ver < comp_size; i_ver++)
+                    {
+                        std::vector<T> distance_kernels(2);
+                        for(std::size_t i_dim=0; i_dim < this->dim; i_dim++)
+                        {
+                           distance_kernels[0] += pow(vertex_attribute_map(this->components[ind_com][i_ver]).observation[i_dim]
+                                                  - kernels[0][i_dim],2);
+                           distance_kernels[1] += pow(vertex_attribute_map(this->components[ind_com][i_ver]).observation[i_dim]
+                                                  - kernels[1][i_dim],2);
+                        }
+                        potential_label[i_ver] = distance_kernels[0] > distance_kernels[1];
+                    }
+                    //-----comptation of the new kernels----------------------------
+                    total_weight[0] = 0.;
+                    total_weight[1] = 0.;
+                    for(std::size_t i_dim=0; i_dim < this->dim; i_dim++)
+                    {
+                       kernels[0][i_dim] = 0;
+                       kernels[1][i_dim] = 0;
+                    }
+                    for (std::size_t i_ver = 0;  i_ver < comp_size; i_ver++)
+                    {
+                        if (vertex_attribute_map(this->components[ind_com][i_ver]).weight==0)
+                        {
+                            continue;
+                        }
+                        if (potential_label[i_ver])
+                        {
+                            total_weight[0] += vertex_attribute_map(this->components[ind_com][i_ver]).weight;
+                            for(std::size_t i_dim=0; i_dim < this->dim; i_dim++)
+                            {
+                                kernels[0][i_dim] += vertex_attribute_map(this->components[ind_com][i_ver]).observation[i_dim]
+                                                  * vertex_attribute_map(this->components[ind_com][i_ver]).weight ;
+                             }
+                         }
+                         else
+                         {
+                            total_weight[1] += vertex_attribute_map(this->components[ind_com][i_ver]).weight;
+                            for(std::size_t i_dim=0; i_dim < this->dim; i_dim++)
+                            {
+                                kernels[1][i_dim] += vertex_attribute_map(this->components[ind_com][i_ver]).observation[i_dim]
+                                                  * vertex_attribute_map(this->components[ind_com][i_ver]).weight;
+                            }
+                         }
+                    }
+                    if ((total_weight[0] == 0)||(total_weight[1] == 0))
+                    {
+                        std::cout << "kmeans error" << std::endl;
+                    }
+                    for(std::size_t i_dim=0; i_dim < this->dim; i_dim++)
+                    {
+                        kernels[0][i_dim] = kernels[0][i_dim] / total_weight[0];
+                        kernels[1][i_dim] = kernels[1][i_dim] / total_weight[1];
+                    }
+                }
+                //----compute the associated energy ------
+                current_energy = 0;
+                for (std::size_t i_ver = 0;  i_ver < comp_size; i_ver++)
+                {
+                    for(std::size_t i_dim=0; i_dim < this->dim; i_dim++)
+                    {
+                       if (potential_label[i_ver])
+                       {
+                       current_energy += pow(vertex_attribute_map(this->components[ind_com][i_ver]).observation[i_dim]
+                                        - kernels[1][i_dim],2) * vertex_attribute_map(this->components[ind_com][i_ver]).weight;
+                       }
+                       else
+                       {
+                        current_energy += pow(vertex_attribute_map(this->components[ind_com][i_ver]).observation[i_dim]
+                                        - kernels[0][i_dim],2) * vertex_attribute_map(this->components[ind_com][i_ver]).weight;
+                        }
+                   }
+                }
+                if (current_energy < best_energy)
+                {
+                    best_energy = current_energy;
+                    for (std::size_t i_ver = 0;  i_ver < comp_size; i_ver++)
+                    {
+                        binary_label[vertex_index_map(this->components[ind_com][i_ver])] = potential_label[i_ver];
+                    }
+                }
             }
         }
     }
     //=============================================================================================
     //=============================  COMPUTE_CENTERS_L2  ==========================================
     //=============================================================================================
-    inline void computeCenters(T*** center, int nbComp, bool * labels)
+    inline void compute_centers(VectorOfCentroids<T> & centers, const std::size_t & nb_comp
+                               , const std::vector<bool> & binary_label)
     {
         //compute for each component the values of h_1 and h_2
-        //T *** center = new T ** [nbComp];
-        VertexAttributeMap<T> vertex_attribute_map
-                = boost::get(boost::vertex_bundle, this->mainGraph);
-        VertexIndexMap<T> indexMap = boost::get(boost::vertex_index, this->mainGraph);
-        for (int i_com = 0; i_com < nbComp; i_com++)
+        //#pragma omp parallel for if (this->parameter.parallel) schedule(dynamic)
+        for (std::size_t ind_com = 0; ind_com < nb_comp; ind_com++)
         {
-            if (this->saturatedComponent[i_com])
+            if (this->saturated_components[ind_com])
             {
                 continue;
             }
-            //std::cout << i_com << " / " << nbComp << " * " << this->components[i_com].size() << std::endl;
-            // first compute h_1 and h_2
-            //center[i_com]    = new T * [2];
-            //center[i_com][0] = new T [this->dim];
-            //center[i_com][1] = new T [this->dim];
-            T totalWeight[2];
-            totalWeight[0] = 0.;
-            totalWeight[1] = 0.;
-            for(int i_dim=0; i_dim < this->dim; i_dim++)
-            {
-                center[i_com][0][i_dim] = 0.;
-                center[i_com][1][i_dim] = 0.;
-            }
-            for (int i_ver = 0;  i_ver < this->components[i_com].size(); i_ver++)
-            {
-                if (vertex_attribute_map(this->components[i_com][i_ver]).weight==0)
-                {
-                    continue;
-                }
-                if (labels[indexMap(this->components[i_com][i_ver])])
-                {
-                    totalWeight[0] += vertex_attribute_map(this->components[i_com][i_ver]).weight;
-                    for(int i_dim=0; i_dim < this->dim; i_dim++)
-                    {
-                       center[i_com][0][i_dim] += vertex_attribute_map(this->components[i_com][i_ver]).observation[i_dim]
-                                                * vertex_attribute_map(this->components[i_com][i_ver]).weight ;
-                    }
-                }
-                else
-                {
-                   totalWeight[1] += vertex_attribute_map(this->components[i_com][i_ver]).weight;
-                   for(int i_dim=0; i_dim < this->dim; i_dim++)
-                   {
-                      center[i_com][1][i_dim] += vertex_attribute_map(this->components[i_com][i_ver]).observation[i_dim]
-                                               * vertex_attribute_map(this->components[i_com][i_ver]).weight;
-                   }
-                }
-            }
-            if ((totalWeight[0] == 0)||(totalWeight[1] == 0))
-            {
-                //the component is saturated
-                this->saturateComponent(i_com);
-                for(int i_dim=0; i_dim < this->dim; i_dim++)
-                {
-                    center[i_com][0][i_dim] = vertex_attribute_map(this->components[i_com].back()).value[i_dim];
-                    center[i_com][1][i_dim] = vertex_attribute_map(this->components[i_com].back()).value[i_dim];
-                }
-            }
-            else
-            {
-                for(int i_dim=0; i_dim < this->dim; i_dim++)
-                {
-                    center[i_com][0][i_dim] = center[i_com][0][i_dim] / totalWeight[0];
-                    center[i_com][1][i_dim] = center[i_com][1][i_dim] / totalWeight[1];
-                    //std::cout << center[i_com][0][i_dim] << " | " << center[i_com][1][i_dim] << std::endl;
-                }
-                //std::cout << totalWeight[0] << " | " << totalWeight[1] << std::endl;
-            }
+            compute_center(centers.centroids[ind_com], ind_com, binary_label);
         }
         return;
+    }
+
+    //=============================================================================================
+    //=============================  COMPUTE_CENTERS_L2  ==========================================
+    //=============================================================================================
+    inline void compute_center( std::vector< std::vector<T> > & center, const std::size_t & ind_com
+                             , const std::vector<bool> & binary_label)
+    {
+        //compute for each component the values of the centroids corresponding to the optimal binary partition
+        VertexAttributeMap<T> vertex_attribute_map
+                = boost::get(boost::vertex_bundle, this->main_graph);
+        VertexIndexMap<T> vertex_index_map = boost::get(boost::vertex_index, this->main_graph);
+        T total_weight[2];
+        total_weight[0] = 0.;
+        total_weight[1] = 0.;
+        //#pragma omp parallel for if (this->parameter.parallel)
+        for (std::size_t i_ver = 0;  i_ver < this->components[ind_com].size(); i_ver++)
+        {
+            if (vertex_attribute_map(this->components[ind_com][i_ver]).weight==0)
+            {
+                continue;
+            }
+            if (binary_label[vertex_index_map(this->components[ind_com][i_ver])])
+            {
+                total_weight[0] += vertex_attribute_map(this->components[ind_com][i_ver]).weight;
+                for(std::size_t i_dim=0; i_dim < this->dim; i_dim++)
+                {
+                    center[0][i_dim] += vertex_attribute_map(this->components[ind_com][i_ver]).observation[i_dim]
+                                      * vertex_attribute_map(this->components[ind_com][i_ver]).weight ;
+                 }
+             }
+             else
+             {
+                total_weight[1] += vertex_attribute_map(this->components[ind_com][i_ver]).weight;
+                for(std::size_t i_dim=0; i_dim < this->dim; i_dim++)
+                {
+                    center[1][i_dim] += vertex_attribute_map(this->components[ind_com][i_ver]).observation[i_dim]
+                                      * vertex_attribute_map(this->components[ind_com][i_ver]).weight;
+                }
+             }
+        }
+        if ((total_weight[0] == 0)||(total_weight[1] == 0))
+        {
+            //the component is saturated
+            this->saturateComponent(ind_com);
+            for(std::size_t i_dim=0; i_dim < this->dim; i_dim++)
+            {
+                center[0][i_dim] = vertex_attribute_map(this->components[ind_com][0]).value[i_dim];
+                center[1][i_dim] = vertex_attribute_map(this->components[ind_com][0]).value[i_dim];
+            }
+        }
+        else
+        {
+            for(std::size_t i_dim=0; i_dim < this->dim; i_dim++)
+            {
+                center[0][i_dim] = center[0][i_dim] / total_weight[0];
+                center[1][i_dim] = center[1][i_dim] / total_weight[1];
+             }
+        }
+    return;
     }
     //=============================================================================================
     //=============================   SET_CAPACITIES     ==========================================
     //=============================================================================================
-    inline void setCapacities(std::size_t nbComp, T*** centers, T iterativ_reg_strength)
+    inline void set_capacities(const VectorOfCentroids<T> & centers)
     {
         VertexAttributeMap<T> vertex_attribute_map
-                = boost::get(boost::vertex_bundle, this->mainGraph);
+                = boost::get(boost::vertex_bundle, this->main_graph);
         EdgeAttributeMap<T> edge_attribute_map
-                = boost::get(boost::edge_bundle, this->mainGraph);
+                = boost::get(boost::edge_bundle, this->main_graph);
         VertexDescriptor<T> desc_v;
         EdgeDescriptor   desc_source2v, desc_v2sink, desc_v2source;
+        std::size_t nb_comp = this->components.size();
         T cost_B, cost_notB; //the cost of being in B or not B, local for each component
         //----first compute the capacity in sink/node edges------------------------------------
-        for (int i_com = 0; i_com < nbComp; i_com++)
+        //#pragma omp parallel for if (this->parameter.parallel) schedule(dynamic)
+        for (std::size_t ind_com = 0; ind_com < nb_comp; ind_com++)
         {
-            if (this->saturatedComponent[i_com])
+            if (this->saturated_components[ind_com])
             {
                 continue;
             }
-            for (int i_ver = 0;  i_ver < this->components[i_com].size(); i_ver++)
+            for (std::size_t i_ver = 0;  i_ver < this->components[ind_com].size(); i_ver++)
             {
-                desc_v    = this->components[i_com][i_ver];
+                desc_v    = this->components[ind_com][i_ver];
                 // because of the adjacency structure NEVER access edge (source,v) directly!
-                desc_v2source = boost::edge(desc_v, this->source,this->mainGraph).first;
-                desc_source2v = edge_attribute_map(desc_v2source).reverseEdge; //use reverseEdge instead
-                desc_v2sink   = boost::edge(desc_v, this->sink,this->mainGraph).first;
+                desc_v2source = boost::edge(desc_v, this->source,this->main_graph).first;
+                desc_source2v = edge_attribute_map(desc_v2source).edge_reverse; //use edge_reverse instead
+                desc_v2sink   = boost::edge(desc_v, this->sink,this->main_graph).first;
                 cost_B    = 0;
                 cost_notB = 0;
                 if (vertex_attribute_map(desc_v).weight==0)
-                {
+                {   //no observation - no cut
                     edge_attribute_map(desc_source2v).capacity = 0;
                     edge_attribute_map(desc_v2sink).capacity   = 0;
                     continue;
                 }
-                for(int i_dim=0; i_dim < this->dim; i_dim++)
+                for(std::size_t i_dim=0; i_dim < this->dim; i_dim++)
                 {
-                   cost_B += 0.5*vertex_attribute_map(desc_v).weight
-                              * (pow(centers[i_com][0][i_dim],2) - 2 * (centers[i_com][0][i_dim]
+                   cost_B    += 0.5*vertex_attribute_map(desc_v).weight
+                              * (pow(centers.centroids[ind_com][0][i_dim],2) - 2 * (centers.centroids[ind_com][0][i_dim]
                               * vertex_attribute_map(desc_v).observation[i_dim]));
                    cost_notB += 0.5*vertex_attribute_map(desc_v).weight
-                              * (pow(centers[i_com][1][i_dim],2) - 2 * (centers[i_com][1][i_dim]
+                              * (pow(centers.centroids[ind_com][1][i_dim],2) - 2 * (centers.centroids[ind_com][1][i_dim]
                               * vertex_attribute_map(desc_v).observation[i_dim]));
                 }
-                /*std::cout << i_ver << ": " << vertex_attribute_map(desc_v).weight << " = "
-                          << vertex_attribute_map(desc_v).observation[0] << " , "
-                          << centers[i_com][0][0] << " / "
-                          << centers[i_com][1][0] << " , "
-                          << cost_B << " / " << cost_notB << " " <<  cost_B - cost_notB <<std::endl;*/
                 if (cost_B>cost_notB)
                 {
                     edge_attribute_map(desc_source2v).capacity = cost_B - cost_notB;
@@ -330,7 +388,7 @@ class CutPursuit_L2 : public CutPursuitProblem<T>
         }
         //----then set the vertex to vertex edges ---------------------------------------------
         EdgeIterator<T> i_edg, i_edg_end;
-        for (boost::tie(i_edg, i_edg_end) = boost::edges(this->mainGraph);
+        for (boost::tie(i_edg, i_edg_end) = boost::edges(this->main_graph);
              i_edg != i_edg_end; ++i_edg)
         {
             if (!edge_attribute_map(*i_edg).realEdge)
@@ -340,7 +398,7 @@ class CutPursuit_L2 : public CutPursuitProblem<T>
             if (!edge_attribute_map(*i_edg).isActive)
             {
                 edge_attribute_map(*i_edg).capacity
-                        = edge_attribute_map(*i_edg).weight * iterativ_reg_strength;
+                        = edge_attribute_map(*i_edg).weight * this->parameter.reg_strenth;
             }
             else
             {
@@ -351,61 +409,58 @@ class CutPursuit_L2 : public CutPursuitProblem<T>
     //=============================================================================================
     //=================================   COMPUTE_VALUE   =========================================
     //=============================================================================================
-    virtual std::pair<std::vector<T>, T> compute_value(std::size_t i_com) override
+    virtual std::pair<std::vector<T>, T> compute_value(const std::size_t & ind_com) override
     {
         VertexAttributeMap<T> vertex_attribute_map
-                                    = boost::get(boost::vertex_bundle, this->mainGraph);
-        T totalWeight = 0;
+                                    = boost::get(boost::vertex_bundle, this->main_graph);
+        T total_weight = 0;
         std::vector<T> compValue(this->dim);
         std::fill((compValue.begin()),(compValue.end()),0);
-        for (VertexComponentIterator<T> i_ver = this->components[i_com].begin();
-                 i_ver != this->components[i_com].end(); ++i_ver)
+        //#pragma omp parallel for if (this->parameter.parallel) schedule(dynamic)
+        for (std::size_t ind_ver = 0; ind_ver < this->components[ind_com].size(); ++ind_ver)
+        {
+            total_weight += vertex_attribute_map(this->components[ind_com][ind_ver]).weight;
+            for(std::size_t i_dim=0; i_dim<this->dim; i_dim++)
             {
-                totalWeight += vertex_attribute_map(*i_ver).weight;
-                //std::cout << i_com << " " << *i_ver << " : " << totalWeight << " " << vertex_attribute_map(*i_ver).observation[0] << std::endl;
-                for(int i_dim=0; i_dim<this->dim; i_dim++)
-                {
-                     compValue[i_dim] += vertex_attribute_map(*i_ver).observation[i_dim]
-                                       * vertex_attribute_map(*i_ver).weight;
-                }
-                vertex_attribute_map(*i_ver).inComponent = i_com;
-                //std::cout << i_com << " = " << *i_ver << std::endl;
+                compValue[i_dim] += vertex_attribute_map(this->components[ind_com][ind_ver]).observation[i_dim]
+                                       * vertex_attribute_map(this->components[ind_com][ind_ver]).weight;
             }
-            for(int i_dim=0; i_dim<this->dim; i_dim++)
+            vertex_attribute_map(this->components[ind_com][ind_ver]).in_component = ind_com;
+         }
+         for(std::size_t i_dim=0; i_dim<this->dim; i_dim++)
+         {
+            compValue[i_dim] = compValue[i_dim] / total_weight;
+         }
+         for (std::size_t ind_ver = 0; ind_ver < this->components[ind_com].size(); ++ind_ver)
+         {
+            for(std::size_t i_dim=0; i_dim<this->dim; i_dim++)
             {
-                compValue[i_dim] = compValue[i_dim] / totalWeight;
+                vertex_attribute_map(this->components[ind_com][ind_ver]).value[i_dim] = compValue[i_dim];
             }
-            for (VertexComponentIterator<T> i_ver = this->components[i_com].begin();
-                 i_ver != this->components[i_com].end(); ++i_ver)
-            {
-                for(int i_dim=0; i_dim<this->dim; i_dim++)
-                {
-                    vertex_attribute_map(*i_ver).value[i_dim] = compValue[i_dim];
-                }
-            }
-        //std::cout << i_com << " : " << compValue[0]<< " : " << compValue[1] << " : " <<  compValue[2]<< " : "  << compValue[3] <<  " : "<< compValue[4] << std::endl;
-        return std::pair<std::vector<T>, T>(compValue, totalWeight);
+         }
+        return std::pair<std::vector<T>, T>(compValue, total_weight);
     }
     //=============================================================================================
     //=================================   COMPUTE_MERGE_GAIN   =========================================
     //=============================================================================================
-    virtual std::pair<std::vector<T>, T> compute_merge_gain(VertexDescriptor<T> comp1, VertexDescriptor<T> comp2) override
+    virtual std::pair<std::vector<T>, T> compute_merge_gain(const VertexDescriptor<T> & comp1
+                                             , const VertexDescriptor<T> & comp2) override
     {
         VertexAttributeMap<T> reduced_vertex_attribute_map
-                = boost::get(boost::vertex_bundle, this->reducedGraph);
-        std::vector<T> mergedValue(this->dim);
+                = boost::get(boost::vertex_bundle, this->reduced_graph);
+        std::vector<T> merge_value(this->dim);
         T gain = 0;
         // compute the value obtained by mergeing the two connected components
-        for(int i_dim=0; i_dim<this->dim; i_dim++)
+        for(std::size_t i_dim=0; i_dim<this->dim; i_dim++)
         {
-            mergedValue[i_dim] =
+            merge_value[i_dim] =
                     (reduced_vertex_attribute_map(comp1).weight *
                      reduced_vertex_attribute_map(comp1).value[i_dim]
                     +reduced_vertex_attribute_map(comp2).weight *
                      reduced_vertex_attribute_map(comp2).value[i_dim])
                    /(reduced_vertex_attribute_map(comp1).weight
                     +reduced_vertex_attribute_map(comp2).weight);
-            gain += 0.5 * (pow(mergedValue[i_dim],2)
+            gain += 0.5 * (pow(merge_value[i_dim],2)
                   * (reduced_vertex_attribute_map(comp1).weight
                     +reduced_vertex_attribute_map(comp2).weight)
                   - pow(reduced_vertex_attribute_map(comp1).value[i_dim],2)
@@ -413,7 +468,7 @@ class CutPursuit_L2 : public CutPursuitProblem<T>
                   - pow(reduced_vertex_attribute_map(comp2).value[i_dim],2)
                   * reduced_vertex_attribute_map(comp2).weight);
         }
-        return std::pair<std::vector<T>, T>(mergedValue, gain);
+        return std::pair<std::vector<T>, T>(merge_value, gain);
     }
 };
 }
