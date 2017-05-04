@@ -17,7 +17,7 @@ To compile the MATLAB mex file for L0 cut pursuit type the following in MATLAB i
 mkdir ./L0_Cut_Pursuit/bin
 
 mex CXXFLAGS="\$CXXFLAGS -pthread -Wall -std=c++11 -fopenmp -O3"...
-    LDFLAGS="\$LDFLAGS -fopenmp" L0_Cut_Pursuit/api/L0_Cut_Pursuit.cpp ...
-    -output L0_Cut_Pursuit/bin/cutPursuitMex
+    LDFLAGS="\$LDFLAGS -fopenmp" L0_Cut_Pursuit/api/L0_cut_pursuit_mex.cpp ...
+    -output L0_Cut_Pursuit/bin/L0_cut_pursuit_mex
     
 addpath('./L0_Cut_Pursuit/bin/')
