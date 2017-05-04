@@ -21,7 +21,7 @@ template < typename T > std::string to_string( const T& n )
 }
 }
 
-enum fidelityType {L2, linear, KL, loglinear};
+enum fidelityType {L2, linear, KL};
 
 typedef std::pair<std::string, float> NameScale_t;
 
@@ -71,32 +71,46 @@ double tocDouble() {
 };
 
 template<typename T>
-class Orderedpair
-{
+class ComponentsFusion
+{//this class encode a potential fusion between two cadjacent component
+ //and is ordered wrt the merge_gain
 public:
-    std::size_t comp1, comp2, index;
-    T value;
-    std::vector<T> mergedValue;
-
-    Orderedpair(std::size_t c1, std::size_t c2, std::size_t ind = 0, T val = 0.)
+    std::size_t comp1, comp2; //index of the components
+    std::size_t border_index; //index of the border-edge
+    T merge_gain; //gain obtained by mergeing the components
+    std::vector<T> merged_value; //value of the new components when they are merged
+    ComponentsFusion(std::size_t c1, std::size_t c2, std::size_t ind = 0, T gain = 0.)
     {
         this->comp1 = c1;
         this->comp2 = c2;
-        this->index = ind;
-        this->value = val;
+        this->border_index = ind;
+        this->merge_gain = gain;
     }
 };
 
 template<typename T>
-struct lessOrderedPair: public std::binary_function<Orderedpair<T>, Orderedpair<T>, bool>
+struct lessComponentsFusion: public std::binary_function<ComponentsFusion<T>, ComponentsFusion<T>, bool>
 {
-    bool operator()(const Orderedpair<T> lhs, const Orderedpair<T> rhs) const
+    bool operator()(const ComponentsFusion<T> lhs, const ComponentsFusion<T> rhs) const
     {
-        return lhs.value < rhs.value;
+        return lhs.merge_gain < rhs.merge_gain;
     }
 };
 
 
+template<typename T>
+class VectorOfCentroids
+{
+    //VectorOfCentroids is a vector of size k x 2 x d where k is the number of components and
+    // d the dimension of the observation
+public:
+    std::vector< std::vector< std::vector<T> > > centroids;
+    VectorOfCentroids(std::size_t nb_comp, std::size_t dim)
+    {
+        this->centroids = std::vector< std::vector< std::vector<T> > >(nb_comp,
+            std::vector< std::vector<T> >(2, std::vector<T>(dim, 0.0)));
+    }
+};
 template<typename T>
 class Point3D
 {
