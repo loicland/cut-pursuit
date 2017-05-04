@@ -63,7 +63,6 @@ class CutPursuit_KL : public CutPursuit<T>
       //tic();
       //--------loading structures---------------------------------------------------------------
         TimeStack ts; ts.tic();
-        double t = ts.tocDouble();
         std::size_t nb_comp = this->components.size();
         VertexAttributeMap<T> vertex_attribute_map
                    = boost::get(boost::vertex_bundle, this->main_graph);
