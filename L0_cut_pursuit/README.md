@@ -1,4 +1,4 @@
-#L0-cut pursuit
+# L0-cut pursuit
 
 L0 cut pursuit is a greedy algorithm to compute a piecewise constant approximation of a function on a weighted graph G=(V,E,w).
 This corresponds to solving the following optimization problem:
@@ -12,7 +12,7 @@ f is the fidelity function. Current implementation supports
   - Kullback leibler fidelity f_v(x_v) = KL(x_v, p_v) with p_v an probability associated with node v. Only applu whenn \Omega is a simplex
 
 ### Reference
-if using this algorithm with \Omega other than R, one must cite:
+if using this algorithm with \Omega other than R, one must also cite:
 
 A structured regularization framework for spatially smoothing semantic labelings of 3D point clouds.
 Loic Landrieu, Hugo Raguet , Bruno Vallet , Clément Mallet, Martin Weinmann
