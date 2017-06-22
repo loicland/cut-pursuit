@@ -230,12 +230,12 @@ class CutPursuit_L2 : public CutPursuit<T>
                        if (potential_label[i_ver])
                        {
                        current_energy += pow(vertex_attribute_map(this->components[ind_com][i_ver]).observation[i_dim]
-                                        - kernels[1][i_dim],2) * vertex_attribute_map(this->components[ind_com][i_ver]).weight;
+                                        - kernels[0][i_dim],2) * vertex_attribute_map(this->components[ind_com][i_ver]).weight;
                        }
                        else
                        {
                         current_energy += pow(vertex_attribute_map(this->components[ind_com][i_ver]).observation[i_dim]
-                                        - kernels[0][i_dim],2) * vertex_attribute_map(this->components[ind_com][i_ver]).weight;
+                                        - kernels[1][i_dim],2) * vertex_attribute_map(this->components[ind_com][i_ver]).weight;
                         }
                    }
                 }
