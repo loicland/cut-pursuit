@@ -1,6 +1,7 @@
 # Cut Pursuit: minimizing convex nonsmooth functionals regularized by graph total variation
 
 A working set strategy for minizing a convex nonsmooth function on a weighted graph G=(V,E,w) when regularized by the total variation:
+
 x^* = \argmin_{x \in \Omega^V} f(x) + \sum_{u,v}w_{u,v} ||x_u - x_v||
 
 with \Omega the space of the values associated to each node. Current implementation only support \Omega = R
