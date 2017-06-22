@@ -9,7 +9,7 @@ with \Omega the space in which the value associated with each node belongs.
 
 We distinguish two different cases  for \phi, for which the implementation are different:
 - \phi(t) = |t|  : the convex case,  the regularizer is the total variation. Folder `cut_pursuit`
--  \phi(t) = \delta(t != 0) = 1 - kroenecker(t):  the non-convex case, the regularizer is the weight of the cut between the adjacent constant components.L0_cut_pursuit. Folder `L0_cut_pursuit`
+-  \phi(t) = \delta(t != 0) = 1 - kroenecker(t):  the non-convex case, the regularizer is the weight of the cut between the adjacent constant components. Folder `L0_cut_pursuit`
 
 ### References:
 
