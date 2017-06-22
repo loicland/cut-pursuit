@@ -3,11 +3,13 @@ C/C++ implementation fot the cut pursuit algorithms with Matlab interfaces.
 
 Cut pursuit is a graph cut-based working set strategy to minimize functions regularized by graph-structured regularizers. For G=(V,E,w) a graph with edges weighted by w, the problem writes:
 
-x^* = argmin_ {x \in R^V} f(x) + \sum_{u, v \in E) w_{u,v} \phi(x_u - x_v)
+x^* = argmin_ {x \in \Omega^V} f(x) + \sum_{u, v \in E) w_{u,v} \phi(x_u - x_v)
 
-We distinguish two different cases for, \phi, for which the implementation are different:
-- cut_pursuit : the convex case, \phi(t) = |t| and the regularizer is the total variation.
-- L0_cut_pursuit : the non-convex case, \phi(t) = \delta(t != 0) = 1 - kroenecker(t) and the regularizer is the weight of the cut between the adjacent constant components.
+with \Omega the space in which the value associated with each node belongs.
+
+We distinguish two different cases  for \phi, for which the implementation are different:
+- \phi(t) = |t|  : the convex case,  the regularizer is the total variation. Folder 'cut_pursuit'
+-  \phi(t) = \delta(t != 0) = 1 - kroenecker(t):  the non-convex case, the regularizer is the weight of the cut between the adjacent constant components.L0_cut_pursuit. Folder 'L0_cut_pursuit'
 
 ### References:
 
@@ -16,4 +18,4 @@ Landrieu, Loic and Obozinski, Guillaume,2016.
 
 if using the implementation in the convex case, one must also cite:
 
-`Cut-pursuit` algorithm for convex nonsmooth functionals regularized by graph total variation, H. Raguet and L. Landrieu, in preparation. 
+Cut-pursuit algorithm for convex nonsmooth functionals regularized by graph total variation, H. Raguet and L. Landrieu, in preparation. 
