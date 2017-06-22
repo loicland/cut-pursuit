@@ -1,7 +1,7 @@
-# cut pursuit: a working-set aprpoach to computing piecewise constant functions on graphs
+# cut pursuit: a working-set strategy to compute piecewise constant functions on graphs
 C/C++ implementation fot the cut pursuit algorithms with Matlab interfaces.
 
-Cut pursuit is a strategy to minimize functions regularized by graph-structured regularizers. For G=(V,E,w) a graph with edges weighted by w, the problem writes:
+Cut pursuit is a graph cut-based working set strategy to minimize functions regularized by graph-structured regularizers. For G=(V,E,w) a graph with edges weighted by w, the problem writes:
 
 x^* = argmin_ {x \in R^V} f(x) + \sum_{u, v \in E) w_{u,v} \phi(x_u - x_v)
 
