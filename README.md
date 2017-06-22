@@ -9,7 +9,7 @@ We distinguish two different cases for, \phi, for which the implementation are d
 - cut_pursuit : the convex case, \phi(x) = |x| and the regularizer is the total variation.
 - L0_cut_pursuit : the non-convex case, \phi(x) = \delta(x != 0) and the regularizer is the weight of the cut between the adjacent constant components.
 
-# Reference:
+### References:
 
 Cut Pursuit: fast algorithms to learn piecewise constant functions on general weighted graphs,
 Landrieu, Loic and Obozinski, Guillaume,2016.
