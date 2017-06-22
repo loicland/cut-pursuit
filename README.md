@@ -6,8 +6,8 @@ Cut pursuit is a graph cut-based working set strategy to minimize functions regu
 x^* = argmin_ {x \in R^V} f(x) + \sum_{u, v \in E) w_{u,v} \phi(x_u - x_v)
 
 We distinguish two different cases for, \phi, for which the implementation are different:
-- cut_pursuit : the convex case, \phi(x) = |x| and the regularizer is the total variation.
-- L0_cut_pursuit : the non-convex case, \phi(x) = \delta(x != 0) and the regularizer is the weight of the cut between the adjacent constant components.
+- cut_pursuit : the convex case, \phi(t) = |t| and the regularizer is the total variation.
+- L0_cut_pursuit : the non-convex case, \phi(t) = \delta(t != 0) = 1 - kroenecker(t) and the regularizer is the weight of the cut between the adjacent constant components.
 
 ### References:
 
