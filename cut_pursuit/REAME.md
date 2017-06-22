@@ -7,7 +7,9 @@ with \Omega the space of the values associated to each node. Current implementat
 
 f must be convex, and its non-smooth part g must be separable over V: g(x) = \sum_{v \in V} g_v(x_v).
 Current implementation supports f under the form:
+
 f(x) = ||A x - y ||^2 + \sum_{v \in V}\mu_v |x| + \iota(x > 0)
+
 with A a linear operator, \mu_v a vector of l1 weights and iota the indicator function
 
 in particular, this allows to solve inverse problems regularized by the total variation or the fused LASSO penalty.
