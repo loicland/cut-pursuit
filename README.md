@@ -14,7 +14,7 @@ We distinguish two different cases  for \phi, for which the implementations are 
 ### References:
 
 Cut Pursuit: fast algorithms to learn piecewise constant functions on general weighted graphs,
-Landrieu, Loic and Obozinski, Guillaume,2016.
+L. Landrieu and G. Obozinski, 2016.
 
 if using the implementation in the convex case, one must also cite:
 
