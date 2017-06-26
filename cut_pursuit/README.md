@@ -1,4 +1,4 @@
-A working set strategy for minizing, over a graph G = (V, E),
+# A working set strategy for minizing, over a graph G = (V, E),
 functionals of the form, for all x in R^V,
 
        F(x) = f(x) +  g(x) + sum_{uv in E} la_d1_uv |x_u — x_v|,
@@ -13,9 +13,7 @@ available, summed up below.
 See the full documentations in */mex/include.
 Interface with MATLAB available, see documentations in */mex/doc.
 
-                      #-------------------------#
-                      #  Graph_quadratic_d1_l1  #
-                      #-------------------------#
+##  Graph_quadratic_d1_l1
 # General form (quadratic functional penalized by fused LASSO):
 
       F(x) = 1/2 ||y — A x||^2 + ||x||_{d1,La_d1}  + ||x||_{l1,La_l1} 
@@ -39,11 +37,7 @@ many iterations are expected and memory is not a concern
 where x, y in R^V, and
       ||y — x||_{l2,La_l2}^2 = sum_{v in V} la_l2_v (y_v — x_v)^2.
 
-
-                    #-----------------------------#
-                    #  Graph_quadratic_d1_bounds  #
-                    #-----------------------------#
-
+##  Graph_quadratic_d1_bounds
 # General form (quadratic functional penalized by TV and box constraints):
 
         F(x) = 1/2 ||y — A x||^2 + ||x||_{d1,La_d1}  + i_{[m, M]}(x)
