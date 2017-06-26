@@ -6,8 +6,8 @@ function [X, it, Obj, Dif] = PFDR_graph_l22_d1_l1_mex(Y, La_l2, Eu, Ev, La_d1, L
 %
 %       F(x) = 1/2 ||y - x||_{l2,La_l2}^2 + ||x||_{d1,La_d1}  + ||x||_{l1,La_l1}
 %
-% where x, y in R^|V|
-%       ||x||_{l2,La_l2}^2 = sum_{v in V} la_l2_v (y_v - x_v)^2,
+% where x, y in R^V
+%       ||y - x||_{l2,La_l2}^2 = sum_{v in V} la_l2_v (y_v - x_v)^2,
 %       ||x||_{d1,La_d1} = sum_{uv in E} la_d1_uv |x_u - x_v|,
 %       ||x||_{l1,La_l1} = sum_{v  in V} la_l1_v |x_v|,
 %

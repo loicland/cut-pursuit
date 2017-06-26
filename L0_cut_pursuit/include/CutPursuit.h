@@ -73,8 +73,11 @@ class CutPursuit
         this->initialize();
         if (this->parameter.verbose > 0)
         {
-            std::cout << "Graph "  << boost::num_vertices(this->main_graph) << " vertices and "
-             <<   boost::num_edges(this->main_graph)  << " edges and observation of dimension "
+            std::size_t n_actual_edges =  (boost::num_edges(this->main_graph)) / 2
+                    - 2 * (boost::num_vertices(this->main_graph)-2);
+             //convert from flow graph with double edges and source/sink edges to undirected edges
+             std::cout << "Graph "  << boost::num_vertices(this->main_graph)-2 << " vertices and "
+             <<  n_actual_edges  << " edges and observations of dimension "
              << this->dim << '\n';
         }
         T energy_zero = this->compute_energy().first; //energy with 1 component

@@ -24,9 +24,9 @@
 //
 //=======================SYNTAX===================================================
 //
-//solution = CutPursuitMex(y, Eu, Ev, lambda = 1, edgeWeight = [1 ... 1]
+//solution = L0_cut_pursuit_mex(y, Eu, Ev, lambda = 1, edgeWeight = [1 ... 1]
 //                 , nodeWeight = [1 ... 1], , mode = 1, speed = 1, verbose = false)
-// float y : the observed signal, NxD
+// float y : the observed signal, DxN
 // int Eu, Ev: the origin and destination of each node, Ex1
 // float edgeWeight: the edge weight, Ex1
 // float nodeWeight: the node weight, Nx1
@@ -40,7 +40,7 @@
 //      1 : recommended (default)
 //      2 : fast but approximated (no backward step)
 //      3 : ludicrous - for prototyping (no backward step)
-// bool verose : verbosity
+// bool verbose : verbosity
 //      0 : silent
 //      1 : recommended (default)
 //      2 : chatty
@@ -53,7 +53,6 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[])
     const int *Eu = (int*) mxGetData(prhs[1]);
     const int *Ev = (int*) mxGetData(prhs[2]);
     plhs[0] = mxDuplicateArray(prhs[0]);
-    //plhs[1] = mxCreateNumericMatrix(1, 1, mxINT32_CLASS, mxREAL);
     
     const float * y           = (float *) mxGetData(prhs[0]);
     const float lambda        = (float) mxGetScalar(prhs[3]);
@@ -63,7 +62,7 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[])
     const float speed         = (float) mxGetScalar(prhs[7]);
     const float verbose       = (float) mxGetScalar(prhs[8]);    
     float * solution          = (float *) mxGetData(plhs[0]);
-
+    
     CP::cut_pursuit<float>(nNod, nEdg, nObs, y
       , Eu, Ev, edgeWeight, nodeWeight, solution, lambda, mode, speed,verbose);
 }
