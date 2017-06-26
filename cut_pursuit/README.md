@@ -4,12 +4,15 @@ functionals of the form, for all x in R^V,
        F(x) = f(x) +  g(x) + sum_{uv in E} la_d1_uv |x_u — x_v|,
 
 where f is convex and differentiable and g is convex and separable 
-according to V, that is g(x) = sum_{v in V} 
+according to V, that is
+       g(x) = sum_{v in V} 
 and la_d1 in R^E are penalization weights.
 
 Several C++ implementations for specific functionals f and g are
 available, summed up below.
+
 See the full documentations in */mex/include.
+
 Interface with MATLAB available, see documentations in */mex/doc.
 
 ### Graph_quadratic_d1_l1
