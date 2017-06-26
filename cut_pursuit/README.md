@@ -1,4 +1,4 @@
-### A working set strategy for minizing, over a graph G = (V, E),
+A working set strategy for minizing, over a graph G = (V, E),
 functionals of the form, for all x in R^V,
 
        F(x) = f(x) +  g(x) + sum_{uv in E} la_d1_uv |x_u — x_v|,
@@ -12,8 +12,8 @@ available, summed up below.
 See the full documentations in */mex/include.
 Interface with MATLAB available, see documentations in */mex/doc.
 
-## Graph_quadratic_d1_l1
-### General form (quadratic functional penalized by fused LASSO):
+### Graph_quadratic_d1_l1
+#### General form (quadratic functional penalized by fused LASSO):
 
       F(x) = 1/2 ||y — A x||^2 + ||x||_{d1,La_d1}  + ||x||_{l1,La_l1} 
 
@@ -25,12 +25,12 @@ where y in R^N, x in R^V, A is an arbitrary real matrix in R^{N-by-|V|}
 with the possibility of adding a positivity constraint on the coordinates of x,
       F(x) + i_{x >= 0}.
 
-### CP_PFDR_graph_quadratic_d1_l1_mex implements the general case, when A is a
+- CP_PFDR_graph_quadratic_d1_l1_mex implements the general case, when A is a
 dense matrix
-### CP_PFDR_graph_quadratic_d1_l1_AtA_mex implements the general case, but A
+- CP_PFDR_graph_quadratic_d1_l1_AtA_mex implements the general case, but A
 is only provided as (A^t A), useful for instance when N > |V| or when
 many iterations are expected and memory is not a concern
-### CP_PFDR_graph_l22_d1_l1_mex implements the particular case
+- CP_PFDR_graph_l22_d1_l1_mex implements the particular case
 
        F(x) = 1/2 ||y — x||_{l2,La_l2}^2 + ||x||_{d1,La_d1}  + ||x||_{l1,La_l1}
 
@@ -38,8 +38,8 @@ where x, y in R^V, and
 
        ||y — x||_{l2,La_l2}^2 = sum_{v in V} la_l2_v (y_v — x_v)^2.
 
-##  Graph_quadratic_d1_bounds
-### General form (quadratic functional penalized by TV and box constraints):
+###  Graph_quadratic_d1_bounds
+#### General form (quadratic functional penalized by TV and box constraints):
 
         F(x) = 1/2 ||y — A x||^2 + ||x||_{d1,La_d1}  + i_{[m, M]}(x)
 
@@ -49,12 +49,12 @@ where y in R^N, x in R^V, A in R^{N-by-|V|}
         i_{[m, M]}(x) = 0          if for all v in V, m <= x_v <= M,
                         +infinity  otherwise
 
-### CP_PFDR_graph_quadratic_d1_bounds_mex implements the general case,
+- CP_PFDR_graph_quadratic_d1_bounds_mex implements the general case,
 when A is a dense matrix
-### CP_PFDR_graph_quadratic_d1_bounds_AtA_mex implements the general case,
+- CP_PFDR_graph_quadratic_d1_bounds_AtA_mex implements the general case,
 but A is only provided as (A^t A), useful for instance when N > |V| or
 when many iterations are expected and memory is not a concern
-### CP_PFDR_graph_l22_d1_bounds_mex implements the particular case
+- CP_PFDR_graph_l22_d1_bounds_mex implements the particular case
 
         F(x) = 1/2 ||y — x||_{l2,La_l2}^2 + ||x||_{d1,La_d1}  + i_{[m, M]}(x)
 
