@@ -6,7 +6,7 @@ function [Cv, rX, CP_it, Time, Obj, Dif] = CP_PFDR_graph_quadratic_d1_l1_AtA_mex
 % 
 %       F(x) = 1/2 ||y - A x||^2 + ||x||_{d1,La_d1}  + ||x||_{l1,La_l1}
 % 
-% where y in R^N, x in R^|V|, A in R^{N-by-|V|}
+% where y in R^N, x in R^V, A in R^{N-by-|V|}
 %       ||x||_{d1,La_d1} = sum_{uv in E} La_d1_uv |x_u - x_v|,
 %       ||x||_{l1,La_l1} = sum_{v  in V} La_l1_v |x_v|,
 %      
@@ -77,7 +77,7 @@ function [Cv, rX, CP_it, Time, Obj, Dif] = CP_PFDR_graph_quadratic_d1_l1_AtA_mex
 %     api/CP_PFDR_graph_quadratic_d1_l1_AtA_mex.cpp ...
 %     src/CP_PFDR_graph_quadratic_d1_l1.cpp ...
 %     src/PFDR_graph_quadratic_d1_l1.cpp ...
-%     src/graph.cpp src/maxflow.cpp src/operator_norm_matrix.cpp ...
+%     src/graph.cpp src/maxflow.cpp src/operator_norm_matrix.cpp
 %     -output bin/CP_PFDR_graph_quadratic_d1_l1_AtA_mex
 %
 % Reference: H. Raguet and L. Landrieu, `Cut-pursuit` algorithm for convex
