@@ -9,7 +9,7 @@ where S is a space in which the value associated with each node belongs.
 
 We distinguish two different cases  for `\phi`, for which the implementations are different:
 - `\phi(t) = |t|`: the convex case,  the regularizer is the graph total variation. See folder `cut_pursuit`. Code by Hugo Raguet.
-- `\phi(t) = \delta(t != 0) = 1 - kroenecker(t)`:  the non-convex case, the regularizer is the weight of the cut between the adjacent constant components. See folder `L0_cut_pursuit`. Code by Loic Landrieu.
+- `\phi(t) = \delta(t != 0) = 1 - kroenecker(t)`:  the non-convex case, the regularizer is the weight of the cut between the adjacent constant components. Can be used for regularization or segmentation. See folder `L0_cut_pursuit`. Code by Loic Landrieu.
 
 ### References:
 
