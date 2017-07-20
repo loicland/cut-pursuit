@@ -124,7 +124,7 @@ class CutPursuit_L2 : public CutPursuit<T>
             std::vector<bool> potential_label(comp_size);    
             std::vector<T> energy_array(comp_size);
             
-            if (this->saturated_components[ind_com] || comp_size <= 1)
+            if (this->saturated_components[ind_com] || comp_size <= 2)
             {
                 continue;
             }
@@ -162,6 +162,7 @@ class CutPursuit_L2 : public CutPursuit<T>
                 { // now fill the second kernel
                    kernels[1][i_dim] = vertex_attribute_map(this->components[ind_com][second_kernel]).observation[i_dim];
                 }
+
                 //----main kmeans loop-----
                 for (std::size_t ite_kmeans = 0; ite_kmeans < this->parameter.kmeans_ite; ite_kmeans++)
                 {
@@ -178,7 +179,7 @@ class CutPursuit_L2 : public CutPursuit<T>
                         }
                         potential_label[i_ver] = distance_kernels[0] > distance_kernels[1];
                     }
-                    //-----comptation of the new kernels----------------------------
+                    //-----computation of the new kernels----------------------------
                     total_weight[0] = 0.;
                     total_weight[1] = 0.;
                     for(std::size_t i_dim=0; i_dim < this->dim; i_dim++)
@@ -194,26 +195,28 @@ class CutPursuit_L2 : public CutPursuit<T>
                         }
                         if (potential_label[i_ver])
                         {
-                            total_weight[0] += vertex_attribute_map(this->components[ind_com][i_ver]).weight;
+                            total_weight[1] += vertex_attribute_map(this->components[ind_com][i_ver]).weight;
                             for(std::size_t i_dim=0; i_dim < this->dim; i_dim++)
                             {
-                                kernels[0][i_dim] += vertex_attribute_map(this->components[ind_com][i_ver]).observation[i_dim]
+                                kernels[1][i_dim] += vertex_attribute_map(this->components[ind_com][i_ver]).observation[i_dim]
                                                   * vertex_attribute_map(this->components[ind_com][i_ver]).weight ;
                              }
                          }
                          else
                          {
-                            total_weight[1] += vertex_attribute_map(this->components[ind_com][i_ver]).weight;
+                            total_weight[0] += vertex_attribute_map(this->components[ind_com][i_ver]).weight;
                             for(std::size_t i_dim=0; i_dim < this->dim; i_dim++)
                             {
-                                kernels[1][i_dim] += vertex_attribute_map(this->components[ind_com][i_ver]).observation[i_dim]
+                                kernels[0][i_dim] += vertex_attribute_map(this->components[ind_com][i_ver]).observation[i_dim]
                                                   * vertex_attribute_map(this->components[ind_com][i_ver]).weight;
                             }
                          }
                     }
                     if ((total_weight[0] == 0)||(total_weight[1] == 0))
                     {
-                        std::cout << "kmeans error" << std::endl;
+			std::cout << ind_com << " kmeans error"<< comp_size << std::endl;
+			break;	
+                        
                     }
                     for(std::size_t i_dim=0; i_dim < this->dim; i_dim++)
                     {
@@ -230,12 +233,12 @@ class CutPursuit_L2 : public CutPursuit<T>
                        if (potential_label[i_ver])
                        {
                        current_energy += pow(vertex_attribute_map(this->components[ind_com][i_ver]).observation[i_dim]
-                                        - kernels[0][i_dim],2) * vertex_attribute_map(this->components[ind_com][i_ver]).weight;
+                                        - kernels[1][i_dim],2) * vertex_attribute_map(this->components[ind_com][i_ver]).weight;
                        }
                        else
                        {
                         current_energy += pow(vertex_attribute_map(this->components[ind_com][i_ver]).observation[i_dim]
-                                        - kernels[1][i_dim],2) * vertex_attribute_map(this->components[ind_com][i_ver]).weight;
+                                        - kernels[0][i_dim],2) * vertex_attribute_map(this->components[ind_com][i_ver]).weight;
                         }
                    }
                 }
