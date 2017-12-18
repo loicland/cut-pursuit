@@ -24,21 +24,21 @@ See repository [CP_PFDR_graph_d1](https://github.com/1a7r0ch3/CP_PFDR_graph_d1),
 - linear fidelity: _φ_: _x_ ↦ - ∑<sub>_v_ in _V_</sub><_x_<sub>_v_</sub>, _y_<sub>_v_</sub>> with _y_<sub>_v_</sub> a weight associated with node _v_
 - Kullback leibler fidelity _φ_: _x_ ↦ ∑<sub>_v_ in _V_</sub> KL(_x_<sub>_v_</sub>, _p_<sub>_v_</sub>) with _p_<sub>_v_</sub> a probability associated with node _v_. Only apply when _Ω_ is a simplex 
 
-### Requirement
+# Requirement
 
 You need boost 1.58, or 1.65 if you want the python wrapper.
 
 ```conda install -c anaconda boost```
 
-### Compilation
+# Compilation
 
-## C++
+### C++
 make sure that you use the following CPPFLAGS: 
 ```set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -pthread -fopenmp -O3 -Wall -std=c++11")```
 
 add ```include<./cut-pursuit/include/API.h>``` and call any of the interface functions.
 
-## MATLAB
+### MATLAB
 To compile the MATLAB mex file type the following in MATLAB in the workspace containing the ```cut-pursuit``` folder:
 
 ```
@@ -77,7 +77,7 @@ title('components')
 
 ```
 
-## Python
+### Python
 Compile the library from the ```cut-pursuit``` folder
 ```
 -cmake .
@@ -85,7 +85,11 @@ Compile the library from the ```cut-pursuit``` folder
 ```
 This creates ```libcp.so``` which can be imported in python. see ```test.py``` to test it out.
 
-### References:
+# Licence
+
+L0-cut pursuit is under a dual GPL3.0 / commercial license. If you want to use L0-cut pursuit for commercial, non-GPL use, contact us about commercial licensing, which will be determined on a case-by-case basis.
+
+# References:
 Cut Pursuit: fast algorithms to learn piecewise constant functions on general weighted graphs,
 L. Landrieu and G. Obozinski, SIAM Journal on Imaging Science 2017, Vol. 10, No. 4 : pp. 1724-1766
 [[hal link]](https://hal.archives-ouvertes.fr/hal-01306779)
