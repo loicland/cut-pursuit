@@ -18,7 +18,7 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -std=c++11 -fopenmp -O3")
 
 include_directories(include)
 
-find_package(Boost 1.58.0 COMPONENTS graph REQUIRED) #system filesystem thread serialization
+find_package(Boost 1.58.0 COMPONENTS graph numpy REQUIRED) #system filesystem thread serialization
 include_directories(${Boost_INCLUDE_DIRS})
 link_directories(${Boost_LIBRARY_DIRS})
 
