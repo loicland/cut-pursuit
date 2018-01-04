@@ -87,10 +87,6 @@ make
 
 This creates ```libcp.so``` which can be imported in python. see ```test.py``` to test it out.
 
-# Licence
-
-L0-cut pursuit is under a dual GPL3.0 / commercial license. If you want to use L0-cut pursuit for commercial, non-GPL use, contact us about commercial licensing, which will be determined on a case-by-case basis.
-
 # References:
 Cut Pursuit: fast algorithms to learn piecewise constant functions on general weighted graphs,
 L. Landrieu and G. Obozinski, SIAM Journal on Imaging Science 2017, Vol. 10, No. 4 : pp. 1724-1766

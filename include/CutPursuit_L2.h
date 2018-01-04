@@ -116,8 +116,7 @@ class CutPursuit_L2 : public CutPursuit<T>
         uint32_t nb_comp = this->components.size();
         // ind_com;
         //#pragma omp parallel for private(ind_com) //if (nb_comp>=8) schedule(dynamic)
-		uint32_t n_thread = omp_get_num_threads();
-		#pragma omp parallel for if (nb_comp >= n_thread) schedule(dynamic) 
+		#pragma omp parallel for if (nb_comp >= omp_get_num_threads()) schedule(dynamic) 
         for (uint32_t ind_com = 0; ind_com < nb_comp; ind_com++)
         {
             std::vector< std::vector<T> > kernels(2, std::vector<T>(this->dim));
@@ -141,7 +140,7 @@ class CutPursuit_L2 : public CutPursuit<T>
 				kernels[0][i_dim] = vertex_attribute_map(this->components[ind_com][first_kernel ]).observation[i_dim];
 			}
             best_energy = 0; //now compute the square distance of each pouint32_tto this kernel
-            #pragma omp parallel for if (nb_comp < n_thread) shared(best_energy) schedule(static) 
+            #pragma omp parallel for if (nb_comp < omp_get_num_threads()) shared(best_energy) schedule(static) 
 			for (uint32_t i_ver = 0;  i_ver < comp_size; i_ver++)
             {
             	energy_array[i_ver] = 0;
@@ -171,7 +170,7 @@ class CutPursuit_L2 : public CutPursuit<T>
                 for (uint32_t ite_kmeans = 0; ite_kmeans < this->parameter.kmeans_ite; ite_kmeans++)
                 {
                     //--affectation step: associate each node with its closest kernel-------------------
-                    #pragma omp parallel for if (nb_comp < n_thread) shared(potential_label) schedule(static) 
+                    #pragma omp parallel for if (nb_comp < omp_get_num_threads()) shared(potential_label) schedule(static) 
 					for (uint32_t i_ver = 0;  i_ver < comp_size; i_ver++)
                     {
                         std::vector<T> distance_kernels(2);
@@ -192,7 +191,7 @@ class CutPursuit_L2 : public CutPursuit<T>
                        kernels[0][i_dim] = 0;
                        kernels[1][i_dim] = 0;
                     }
-					#pragma omp parallel for if (nb_comp < n_thread) shared(potential_label) schedule(static) 
+					#pragma omp parallel for if (nb_comp < omp_get_num_threads()) shared(potential_label) schedule(static) 
                     for (uint32_t i_ver = 0;  i_ver < comp_size; i_ver++)
                     {
                         if (vertex_attribute_map(this->components[ind_com][i_ver]).weight==0)
@@ -231,7 +230,7 @@ class CutPursuit_L2 : public CutPursuit<T>
                 }
                 //----compute the associated energy ------
                 current_energy = 0;
-				#pragma omp parallel for if (nb_comp < n_thread) shared(potential_label) schedule(static) 
+				#pragma omp parallel for if (nb_comp < omp_get_num_threads()) shared(potential_label) schedule(static) 
                 for (uint32_t i_ver = 0;  i_ver < comp_size; i_ver++)
                 {
                     for(uint32_t i_dim=0; i_dim < this->dim; i_dim++)
