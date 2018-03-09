@@ -50,8 +50,8 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[])
     const int nNod = mxGetN(prhs[0]);
     const int nObs = mxGetM(prhs[0]);
     const int nEdg = mxGetNumberOfElements(prhs[1]);
-    const int *Eu = (int*) mxGetData(prhs[1]);
-    const int *Ev = (int*) mxGetData(prhs[2]);
+    const uint32_t *Eu = (uint32_t*) mxGetData(prhs[1]);
+    const uint32_t *Ev = (uint32_t*) mxGetData(prhs[2]);
     plhs[0] = mxDuplicateArray(prhs[0]);
     //plhs[1] = mxCreateNumericMatrix(1, 1, mxINT32_CLASS, mxREAL);
     

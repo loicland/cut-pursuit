@@ -67,8 +67,8 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[])
     const int nEdg = mxGetNumberOfElements(prhs[1]); //number of edges
     //---read inputs----
     std::vector< std::vector<float> > observation(n_nodes);
-    const std::vector<int> Eu((int*)mxGetData(prhs[1]), (int*)mxGetData(prhs[1])+nEdg);
-    const std::vector<int> Ev((int*)mxGetData(prhs[2]), (int*)mxGetData(prhs[2])+nEdg);
+    const std::vector<uint32_t> Eu((uint32_t*)mxGetData(prhs[1]), (uint32_t*)mxGetData(prhs[1])+nEdg);
+    const std::vector<uint32_t> Ev((uint32_t*)mxGetData(prhs[2]), (uint32_t*)mxGetData(prhs[2])+nEdg);
     const float lambda        = (float) mxGetScalar(prhs[3]); //reg strength
     const std::vector<float> edge_weight((float*)mxGetData(prhs[4]), (float*)mxGetData(prhs[4])+nEdg);
     const std::vector<float> node_weight((float*)mxGetData(prhs[5]), (float*)mxGetData(prhs[5])+n_nodes);
@@ -91,11 +91,11 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[])
     }
     //---set up output--------------------------------
     //plhs[0] = mxDuplicateArray(prhs[0]);
-    int * in_component_array, * Eu_red_array, * Ev_red_array;
+    uint32_t * in_component_array, * Eu_red_array, * Ev_red_array;
     float * edge_weight_red_array, * node_weight_red_array;
-    int n_nodes_red, n_edges_red;
-    std::vector<int> in_component, Eu_red, Ev_red;
-    std::vector< std::vector<int> > components;
+    uint32_t n_nodes_red, n_edges_red;
+    std::vector<uint32_t> in_component, Eu_red, Ev_red;
+    std::vector< std::vector<uint32_t> > components;
     std::vector<float>  edge_weight_red, node_weight_red;
 
     if (true)
@@ -128,8 +128,8 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[])
         }
     }
     //----------fill in_component----------
-    plhs[1] = mxCreateNumericMatrix(n_nodes, 1 , mxINT32_CLASS, mxREAL);
-    in_component_array = (int*) mxGetData(plhs[1]);
+    plhs[1] = mxCreateNumericMatrix(n_nodes, 1 , mxUINT32_CLASS, mxREAL);
+    in_component_array = (uint32_t*) mxGetData(plhs[1]);
     std::copy(in_component.begin(), in_component.end(), in_component_array);
 
     //----------fill components----------
@@ -147,11 +147,11 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[])
     plhs[2] = components_ptr;
     //----------fill Eu_red----------
     plhs[3] = mxCreateNumericMatrix(n_edges_red, 1 , mxINT32_CLASS, mxREAL);
-    Eu_red_array = (int*) mxGetData(plhs[3]);
+    Eu_red_array = (uint32_t*) mxGetData(plhs[3]);
     std::copy(Eu_red.begin(), Eu_red.end(), Eu_red_array);
     //----------fill Ev_red----------
     plhs[4] = mxCreateNumericMatrix(n_edges_red, 1 , mxINT32_CLASS, mxREAL);
-    Ev_red_array = (int*) mxGetData(plhs[4]);
+    Ev_red_array = (uint32_t*) mxGetData(plhs[4]);
     std::copy(Ev_red.begin(), Ev_red.end(), Ev_red_array);
     //----------fill edge_weight_red----------
     plhs[5] = mxCreateNumericMatrix(n_edges_red, 1 ,mxSINGLE_CLASS, mxREAL);
