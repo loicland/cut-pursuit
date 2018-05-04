@@ -1,7 +1,7 @@
 #include <iostream>
 #include <vector>
 #include "mex.h"
-#include <opencv2/opencv.hpp>
+//#include <opencv2/opencv.hpp>
 #include "../include/API.h"
 //**********************************************************************************
 //*******************************L0-CUT PURSUIT*************************************
