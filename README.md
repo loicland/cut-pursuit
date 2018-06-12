@@ -1,5 +1,5 @@
 # cut pursuit: a working-set strategy to compute piecewise constant functions on graphs
-C/C++ implementation fot the cut pursuit algorithms with Matlab and Python interfaces.
+C/C++ implementation of the L0-cut pursuit algorithms with Matlab and Python interfaces.
 
 ![illustration](https://user-images.githubusercontent.com/1902679/34037816-738cf4ba-e18a-11e7-9343-7c27209b27e6.png)
 
