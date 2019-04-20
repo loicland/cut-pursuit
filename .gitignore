@@ -1,0 +1,4 @@
+*.vscode
+*.dylib
+*.so
+build/
