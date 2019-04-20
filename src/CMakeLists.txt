@@ -19,9 +19,13 @@ find_package(PythonLibs)
 find_package(PythonInterp)
 find_package(NumPy 1.5 REQUIRED)
 
-set(PYTHONVERSION ${PYTHON_VERSION_MAJOR}${PYTHON_VERSION_MINOR})
-
-find_package(Boost 1.58.0 COMPONENTS graph numpy${PYTHONVERSION} REQUIRED) #system filesystem thread serialization
+find_package(Boost 1.58.0 COMPONENTS graph REQUIRED) #system filesystem thread serialization
+if (${Boost_VERSION} VERSION_LESS 1.67.0 )
+    find_package(Boost 1.58.0 COMPONENTS numpy REQUIRED) #system filesystem thread serialization
+else()
+    set(PYTHONVERSION ${PYTHON_VERSION_MAJOR}${PYTHON_VERSION_MINOR})
+    find_package(Boost 1.67.0 COMPONENTS numpy${PYTHONVERSION} REQUIRED)
+endif()
 include_directories(${Boost_INCLUDE_DIRS})
 link_directories(${Boost_LIBRARY_DIRS})
 
