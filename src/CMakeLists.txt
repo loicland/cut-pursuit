@@ -20,7 +20,7 @@ find_package(PythonInterp)
 find_package(NumPy 1.5 REQUIRED)
 
 find_package(Boost 1.58.0 COMPONENTS graph REQUIRED) #system filesystem thread serialization
-if (${Boost_VERSION} VERSION_LESS 1.67.0 )
+if (${Boost_MINOR_VERSION} LESS 67 )
     find_package(Boost 1.58.0 COMPONENTS numpy REQUIRED) #system filesystem thread serialization
 else()
     set(PYTHONVERSION ${PYTHON_VERSION_MAJOR}${PYTHON_VERSION_MINOR})
