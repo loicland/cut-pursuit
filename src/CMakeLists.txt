@@ -21,7 +21,7 @@ find_package(NumPy 1.5 REQUIRED)
 
 find_package(Boost 1.58.0 COMPONENTS graph REQUIRED) #system filesystem thread serialization
 if (${Boost_MINOR_VERSION} LESS 67 )
-    find_package(Boost 1.58.0 COMPONENTS numpy REQUIRED) #system filesystem thread serialization
+    find_package(Boost 1.58.0 COMPONENTS numpy${PYTHON_VERSION_MAJOR} REQUIRED) #system filesystem thread serialization
 else()
     set(PYTHONVERSION ${PYTHON_VERSION_MAJOR}${PYTHON_VERSION_MINOR})
     find_package(Boost 1.67.0 COMPONENTS numpy${PYTHONVERSION} REQUIRED)
