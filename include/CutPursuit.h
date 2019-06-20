@@ -11,6 +11,7 @@ template <typename T>
 struct CPparameter
 {
     T   reg_strenth;  //regularization strength, multiply the edge weight
+    uint32_t cutoff;  //minimal component size
     uint32_t flow_steps; //number of steps in the optimal binary cut computation
     uint32_t kmeans_ite; //number of iteration in the kmeans sampling
     uint32_t kmeans_resampling; //number of kmeans re-intilialization
@@ -21,6 +22,7 @@ struct CPparameter
     fidelityType fidelity; //the fidelity function
     double smoothing; //smoothing term (for Kl divergence only)
     bool parallel; //enable/disable parrallelism
+	T weight_decay; //for continued optimization of the flow steps
 };
 
 template <typename T>
@@ -63,6 +65,7 @@ class CutPursuit
         this->parameter.fidelity = L2;
         this->parameter.smoothing = 0.1;
         this->parameter.parallel = true;
+		this->parameter.weight_decay = 0.7;
     }
     virtual ~CutPursuit(){
     };  
@@ -113,6 +116,11 @@ class CutPursuit
                         printf("KL Energy %4.3f %% - ", 100 * (energy.first + energy.second) / energy_zero);
                         break;
                     }
+       case SPG:
+                    {
+                        printf("Quadratic Energy %4.3f %% - ", 100 * (energy.first + energy.second) / energy_zero);
+                        break;
+                    }
                 }
                 std::cout << "Timer  " << ts.toc() << std::endl;
             }
@@ -125,7 +133,7 @@ class CutPursuit
                 }
                 break;
             }
-            if ((old_energy - energy.first - energy.second) / (energy_zero - energy.first - energy.second)
+            if ((old_energy - energy.first - energy.second) / (old_energy)
                < this->parameter.stopping_ratio)
             {   //relative energy progress stopping criterion
                 if (this->parameter.verbose > 1)
@@ -143,6 +151,10 @@ class CutPursuit
                 break;
             }
             old_energy = energy.first + energy.second;
+        }
+        if (this->parameter.cutoff > 0)
+        {
+            this->cutoff();
         }
         return std::pair<std::vector<T>, std::vector<T>>(energy_out, time_out);
     }
@@ -241,7 +253,7 @@ class CutPursuit
     //=============================================================================================
     //=============================   ACTIVATE_EDGES     ==========================================
     //=============================================================================================
-    uint32_t activate_edges()
+    uint32_t activate_edges(bool allows_saturation = true)
     {   //this function analyzes the optimal binary partition to detect:
         //- saturated components (i.e. uncuttable)
         //- new activated edges
@@ -276,7 +288,7 @@ class CutPursuit
                    totalWeight[1] += vertex_attribute_map(this->components[ind_com][ind_ver]).weight;
                 }
             }
-            if ((totalWeight[0] == 0)||(totalWeight[1] == 0))
+            if (allows_saturation && ((totalWeight[0] == 0)||(totalWeight[1] == 0)))
             {
                 //the component is saturated
                 this->saturateComponent(ind_com);
@@ -297,12 +309,12 @@ class CutPursuit
             color_v2 = vertex_attribute_map(boost::target(*ite_edg, this->main_graph)).color;
             //color_source = 0, color_sink = 4, uncolored = 1
             //we want an edge when a an interface source/sink
-            //this corresponds to a sum of 1 3 4 6 or 7
+            //this corresponds to a sum of 4
             //for the case of uncolored nodes we arbitrarily chose source-uncolored
             color_combination = color_v1 + color_v2;
-            if ((color_combination == 0)||(color_combination == 2)||(color_combination == 5)
+            if ((color_combination == 0)||(color_combination == 2)||(color_combination == 2)
               ||(color_combination == 8))
-            {   //edge between two verices of the same color
+            {   //edge between two vertices of the same color
                 continue;
             }
             //the edge is active!
@@ -324,7 +336,7 @@ class CutPursuit
         {   //compute the structure of the reduced graph        
             this->compute_reduced_graph();
             //check for beneficial merges
-            this->merge();
+            this->merge(false);
         }
         else
         {   //compute only the value associated to each connected components
@@ -516,7 +528,7 @@ class CutPursuit
     //=============================================================================================
     //================================          MERGE          ====================================
     //=============================================================================================
-    void merge()
+    uint32_t merge(bool is_cutoff)
     {
         // TODO: right now we only do one loop through the heap of potential mergeing, and only
         //authorize one mergeing per component. We could update the gain and merge until it is no longer
@@ -539,7 +551,7 @@ class CutPursuit
         VertexDescriptor<T> source_component, target_component;
         uint32_t ind_source_component, ind_target_component, border_edge_currentIndex;
         //gain_current is the vector of gains associated with each mergeing move
-        std::vector<T> gain_current(boost::num_edges(this->reduced_graph));
+        //std::vector<T> gain_current(boost::num_edges(this->reduced_graph));
         //we store in merge_queue the potential mergeing with a priority on the potential gain
         std::priority_queue<ComponentsFusion<T>, std::vector<ComponentsFusion<T>>, lessComponentsFusion<T>> merge_queue;
         T gain; // the gain obtained by removing the border corresponding to the edge in the reduced graph
@@ -552,6 +564,11 @@ class CutPursuit
             //retrieve the two components corresponding to this border
             source_component = boost::source(border_edge_current, this->reduced_graph);
             target_component = boost::target(border_edge_current, this->reduced_graph);
+            if (is_cutoff && component_attribute_map(source_component).weight > this->parameter.cutoff
+              &&component_attribute_map(target_component).weight > this->parameter.cutoff)
+            {
+                continue;
+            }
             ind_source_component = component_index_map(source_component);
             ind_target_component = component_index_map(target_component);
             //----now compute the gain of mergeing those two components-----
@@ -564,13 +581,14 @@ class CutPursuit
             //in a structure ordered by the gain
             ComponentsFusion<T> mergeing_information(ind_source_component, ind_target_component, border_edge_currentIndex, gain);
             mergeing_information.merged_value = merge_gain.first;
-            if (gain>0)
+            if (is_cutoff || gain>0)
             {   //it is beneficial to merge those two components
                 //we add them to the merge_queue
                 merge_queue.push(mergeing_information);
-                gain_current.at(border_edge_currentIndex) = gain;
+                //gain_current.at(border_edge_currentIndex) = gain;
             }
         }
+        uint32_t n_merged = 0;
         //----go through the priority queue of merges and perform them as long as it is beneficial---
         //is_merged indicate which components no longer exists because they have been merged with a neighboring component
         std::vector<bool> is_merged(this->components.size(), false);
@@ -579,16 +597,17 @@ class CutPursuit
         while(merge_queue.size()>0)
         {   //loop through the potential mergeing and accept the ones that decrease the energy
             ComponentsFusion<T> mergeing_information = merge_queue.top();
-            if (mergeing_information.merge_gain<=0)
+            if (!is_cutoff && mergeing_information.merge_gain<=0)
             {   //no more mergeing provide a gain in energy
                 break;
             }            
             merge_queue.pop();
-            if (is_merged.at(mergeing_information.comp1) || is_merged.at(mergeing_information.comp2))
+            if (is_merged.at(mergeing_information.comp1) || (is_merged.at(mergeing_information.comp2)))
             {
                 //at least one of the components have already been merged
                 continue;
             }
+            n_merged++;
             //---proceed with the fusion of comp1 and comp2----
             //add the vertices of comp2 to comp1
             this->components[mergeing_information.comp1].insert(this->components[mergeing_information.comp1].end()
@@ -597,7 +616,7 @@ class CutPursuit
             this->saturated_components[mergeing_information.comp1] = false;
             //the new weight is the sum of both weights
             component_attribute_map(mergeing_information.comp1).weight
-                           += component_attribute_map(target_component).weight;
+                           += component_attribute_map(mergeing_information.comp2).weight;
             //the new value is already computed in mergeing_information
             component_attribute_map(mergeing_information.comp1).value  = mergeing_information.merged_value;
             //we deactivate the border between comp1 and comp2
@@ -639,7 +658,155 @@ class CutPursuit
         this->components           = new_components;
         this->root_vertex          = new_root_vertex;
         this->saturated_components = new_saturated_components;
+        return n_merged;
     }
+    //=============================================================================================
+    //================================          CUTOFF          ====================================
+    //=============================================================================================
+    void cutoff()
+    {
+        int i = 0;
+        uint32_t n_merged;
+        while (true)
+        {
+            //this->compute_connected_components();
+            this->compute_reduced_graph();
+            n_merged = merge(true);
+            i++;
+            if (n_merged==0 || i>50)
+            {
+                break;
+            }
+        }
+    }
+//    //=============================================================================================
+//    //================================          CUTOFF          ====================================
+//    //=============================================================================================
+//    void cutoff()
+//    {
+//        // Loop through all components and merge the one smaller than the cutoff.
+//        // It merges components which increase he energy the least
+//        //----load graph structure---
+//        VertexAttributeMap<T> vertex_attribute_map
+//                = boost::get(boost::vertex_bundle, this->main_graph);
+//        VertexAttributeMap<T> reduced_vertex_attribute_map
+//                = boost::get(boost::vertex_bundle, this->reduced_graph);
+//        EdgeAttributeMap<T> reduced_edge_attribute_map
+//                = boost::get(boost::edge_bundle, this->reduced_graph);
+//        EdgeAttributeMap<T> edge_attribute_map
+//                = boost::get(boost::edge_bundle, this->main_graph);
+//        VertexIndexMap<T> reduced_vertex_index_map = boost::get(boost::vertex_index, this->reduced_graph);
+//        EdgeIndexMap<T> reduced_edge_index_map = get(&EdgeAttribute<T>::index, this->reduced_graph);
+//        //-----------------------------------
+//        typename boost::graph_traits<Graph<T>>::vertex_iterator ite_comp, ite_comp_end;
+//        typename boost::graph_traits<Graph<T>>::out_edge_iterator ite_edg_out, ite_edg_out_end;
+//        typename boost::graph_traits<Graph<T>>::in_edge_iterator ite_edg_in, ite_edg_in_end;
+//        typename std::vector<EdgeDescriptor>::iterator ite_border_edge;
+//        VertexDescriptor<T> current_vertex, neighbor_vertex;
+//        //gain_current is the vector of gains associated with each mergeing move
+//        //we store in merge_queue the potential mergeing with a priority on the potential gain
+//        T gain; // the gain obtained by removing the border corresponding to the edge in the reduced graph
+//        std::vector<bool> to_destroy(this->components.size(), false); //components merged to be removed
+//        while (true)
+//        {
+//            this->compute_connected_components();
+//            this->compute_reduced_graph();
+//            bool has_merged = false;
+//            std::cout << "CUTTING OFF : " << this->components.size() << "COMPONENTS " << std::endl;
+//            for (boost::tie(ite_comp,ite_comp_end) = boost::vertices(this->reduced_graph); ite_comp !=  ite_comp_end; ++ite_comp)
+//            {
+
+//                current_vertex = *ite_comp;
+//                if (reduced_vertex_attribute_map(current_vertex).weight > this->parameter.cutoff
+//                   || to_destroy.at(reduced_vertex_index_map(current_vertex)))
+//                {//component big enough to not be cut or already removed
+//                    continue;
+//                }
+//                std::priority_queue<ComponentsFusion<T>, std::vector<ComponentsFusion<T>>, lessComponentsFusion<T>> merge_queue;
+//std::cout << "COMPONENT " << reduced_vertex_index_map(current_vertex) << " IS OF SIZE"<< reduced_vertex_attribute_map(current_vertex).weight << std::endl;
+//                for (boost::tie(ite_edg_out,ite_edg_out_end) = boost::out_edges(current_vertex, this->reduced_graph);
+//                    ite_edg_out !=  ite_edg_out_end; ++ite_edg_out)
+//                {   //explore all neighbors
+//                     neighbor_vertex = boost::target(*ite_edg_out, this->reduced_graph);
+//                     std::pair<std::vector<T>, T> merge_gain = compute_merge_gain(current_vertex, neighbor_vertex);
+//                     gain = merge_gain.second
+//                          + reduced_edge_attribute_map(*ite_edg_out).weight * this->parameter.reg_strenth;
+//                     ComponentsFusion<T> mergeing_information(reduced_vertex_index_map(current_vertex), reduced_vertex_index_map(neighbor_vertex)
+//                                       , reduced_edge_index_map(*ite_edg_out), gain);
+//                     mergeing_information.merged_value = merge_gain.first;
+//                     merge_queue.push(mergeing_information);
+//std::cout << "         NEI OUT " <<reduced_vertex_index_map(neighbor_vertex)  << " GAIN"<< gain << std::endl;
+
+//                }
+//                for (boost::tie(ite_edg_in,ite_edg_in_end) = boost::in_edges(current_vertex, this->reduced_graph);
+//                    ite_edg_in !=  ite_edg_in_end; ++ite_edg_in)
+//                {   //explore all neighbors
+//                     neighbor_vertex = boost::source(*ite_edg_in, this->reduced_graph);
+//                     std::pair<std::vector<T>, T> merge_gain = compute_merge_gain(current_vertex, neighbor_vertex);
+//                     gain = merge_gain.second
+//                          + reduced_edge_attribute_map(*ite_edg_in).weight * this->parameter.reg_strenth;
+//                     ComponentsFusion<T> mergeing_information(reduced_vertex_index_map(current_vertex), reduced_vertex_index_map(neighbor_vertex)
+//                                       , reduced_edge_index_map(*ite_edg_in), gain);
+//                     mergeing_information.merged_value = merge_gain.first;
+//                     merge_queue.push(mergeing_information);
+//std::cout << "         NEI IN" <<reduced_vertex_index_map(neighbor_vertex)  << " GAIN"<< gain << std::endl;
+
+//                }
+//                if (merge_queue.empty())
+//                {
+//                    continue;
+//                }
+//                has_merged = true;
+//                //select the most advantegeous neighboring components and merge it.
+//                ComponentsFusion<T> mergeing_information = merge_queue.top();
+//std::cout << "BEST NEIGHBORS = " << mergeing_information.comp1 << " - " << mergeing_information.comp2 << " = " << mergeing_information .merge_gain
+//          << "   Weight " << reduced_vertex_attribute_map(mergeing_information.comp2).weight << std::endl;
+//                this->components[mergeing_information.comp1].insert(this->components[mergeing_information.comp1].end()
+//                    ,components[mergeing_information.comp2].begin(), this->components[mergeing_information.comp2].end());
+//                //the new weight is the sum of both weights
+//                reduced_vertex_attribute_map(mergeing_information.comp1).weight
+//                               += reduced_vertex_attribute_map(mergeing_information.comp2).weight;
+//                //the new value is already computed in mergeing_information
+//                reduced_vertex_attribute_map(mergeing_information.comp1).value  = mergeing_information.merged_value;
+//                //we deactivate the border between comp1 and comp2
+//                for (ite_border_edge = this->borders.at(mergeing_information.border_index).begin();
+//                    ite_border_edge != this->borders.at(mergeing_information.border_index).end() ; ++ite_border_edge)
+//                {
+//                     edge_attribute_map(*ite_border_edge).isActive = false;
+//                }
+//                to_destroy.at(mergeing_information.comp2) = true;
+//std::cout << "=> " << reduced_vertex_index_map(current_vertex) << " IS OF SIZE"<< reduced_vertex_attribute_map(current_vertex).weight << std::endl;
+
+//            }
+//            //if (!has_merged)
+//            //{
+//                break;
+//            //}
+//        }
+//        //we now rebuild the vectors components, rootComponents and saturated_components
+//        std::vector<std::vector<VertexDescriptor<T>>> new_components;
+//        uint32_t ind_new_component = 0;
+//        for (uint32_t ind_com = 0; ind_com < this->components.size(); ind_com++)
+//        {
+//            if (to_destroy.at(ind_com))
+//            {   //this component has been removed
+//                continue;
+//            }//this components is kept
+//            new_components.push_back(this->components.at(ind_com));
+//            //if (is_merged.at(ind_com))
+//            //{   //we need to update the value of the vertex in this component
+//                for (uint32_t ind_ver = 0; ind_ver < this->components[ind_com].size(); ++ind_ver)
+//                {
+//                    vertex_attribute_map(this->components[ind_com][ind_ver]).value
+//                        = reduced_vertex_attribute_map(boost::vertex(ind_com, this->reduced_graph)).value;
+//                    vertex_attribute_map(this->components[ind_com][ind_ver]).in_component
+//                        = ind_new_component;//ind_com;
+//                }
+//            //}
+//            ind_new_component++;
+//        }
+//        this->components           = new_components;
+//    }
 //===============================================================================================
 //==========================saturateComponent====================================================
 //===============================================================================================

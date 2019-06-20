@@ -76,8 +76,8 @@ class CutPursuit_L2 : public CutPursuit<T>
             //compute h_1 and h_2
             centers = VectorOfCentroids<T>(nb_comp, this->dim);
             this->compute_centers(centers, nb_comp,binary_label);
-                    
             this->set_capacities(centers);
+
             // update the capacities of the flow graph
             boost::boykov_kolmogorov_max_flow(
                        this->main_graph,
@@ -115,6 +115,7 @@ class CutPursuit_L2 : public CutPursuit<T>
         VertexIndexMap<T> vertex_index_map = boost::get(boost::vertex_index, this->main_graph);
         uint32_t nb_comp = this->components.size();
         // ind_com;
+
         //#pragma omp parallel for private(ind_com) //if (nb_comp>=8) schedule(dynamic)
 		#pragma omp parallel for if (nb_comp >= omp_get_num_threads()) schedule(dynamic) 
         for (uint32_t ind_com = 0; ind_com < nb_comp; ind_com++)
