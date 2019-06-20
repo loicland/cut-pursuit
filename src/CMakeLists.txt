@@ -43,6 +43,4 @@ add_library(cp SHARED cutpursuit.cpp ${CP_HEADERS})
 target_link_libraries(cp
     ${Boost_LIBRARIES}
     ${PYTHON_LIBRARIES}
-    boost_system
-    boost_python37
     )
