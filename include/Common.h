@@ -21,7 +21,7 @@ template < typename T > std::string to_string( const T& n )
 }
 }
 
-enum fidelityType {L2, linear, KL};
+enum fidelityType {L2, linear, KL, SPG};
 
 typedef std::pair<std::string, float> NameScale_t;
 

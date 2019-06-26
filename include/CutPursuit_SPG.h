@@ -4,10 +4,10 @@
 
 namespace CP {
 template <typename T>
-class CutPursuit_L2 : public CutPursuit<T>
+class CutPursuit_SPG : public CutPursuit<T>
 {
     public:
-    ~CutPursuit_L2(){
+    ~CutPursuit_SPG(){
             };
     //=============================================================================================
     //=============================     COMPUTE ENERGY  ===========================================
@@ -65,18 +65,23 @@ class CutPursuit_L2 : public CutPursuit<T>
         //stores wether each vertex is B or not
         std::vector<bool> binary_label(this->nVertex);
         //initialize the binary partition with kmeans
-        this->init_labels(binary_label);
+        this->init_labels(binary_label, true);
+
         //centers is the value of each binary component in the optimal partition
         VectorOfCentroids<T> centers(nb_comp, this->dim);
         //-----main loop----------------------------------------------------------------
+
         // the optimal flow is iteratively approximated
-        for (uint32_t i_step = 1; i_step <= this->parameter.flow_steps; i_step++)
+		T unary_weight = pow(this->parameter.weight_decay, -float(this->parameter.flow_steps));
+        for (uint32_t i_step = 0; i_step < this->parameter.flow_steps; i_step++)
         {
+			unary_weight = unary_weight * this->parameter.weight_decay;
+
             //the regularization strength at this step
             //compute h_1 and h_2
             centers = VectorOfCentroids<T>(nb_comp, this->dim);
             this->compute_centers(centers, nb_comp,binary_label);
-            this->set_capacities(centers);
+            this->set_capacities(centers, unary_weight);
 
             // update the capacities of the flow graph
             boost::boykov_kolmogorov_max_flow(
@@ -88,46 +93,58 @@ class CutPursuit_L2 : public CutPursuit<T>
                        get(boost::vertex_index                , this->main_graph),
                        this->source,
                        this->sink);
+
             for (uint32_t ind_com = 0; ind_com < nb_comp; ind_com++)
             {
                 if (this->saturated_components[ind_com])
                 {
                     continue;
                 }
+	
                 for (uint32_t i_ver = 0;  i_ver < this->components[ind_com].size(); i_ver++)
-                {
+                {	
                     binary_label[vertex_index_map(this->components[ind_com][i_ver])]
                           = (vertex_attribute_map(this->components[ind_com][i_ver]).color
                           == vertex_attribute_map(this->sink).color);
+
                  }
              }
         }
-        saturation = this->activate_edges();
+        saturation = this->activate_edges(false);
         return saturation;
     }
     //=============================================================================================
     //=============================      INIT_L2 ====== ===========================================
     //=============================================================================================
-    inline void init_labels(std::vector<bool> & binary_label)
+    inline void init_labels(std::vector<bool> & binary_label, bool spatial_part)
     { //-----initialize the labelling for each components with kmeans------------------------------
         VertexAttributeMap<T> vertex_attribute_map 
                 = boost::get(boost::vertex_bundle, this->main_graph);
         VertexIndexMap<T> vertex_index_map = boost::get(boost::vertex_index, this->main_graph);
         uint32_t nb_comp = this->components.size();
         // ind_com;
-
         //#pragma omp parallel for private(ind_com) //if (nb_comp>=8) schedule(dynamic)
+		int dim_spat;
+		if (spatial_part)
+		{
+			dim_spat = this->dim-0;
+		}
+		else
+		{
+			dim_spat = this->dim;
+		}
+
 		#pragma omp parallel for if (nb_comp >= omp_get_num_threads()) schedule(dynamic) 
         for (uint32_t ind_com = 0; ind_com < nb_comp; ind_com++)
         {
-            std::vector< std::vector<T> > kernels(2, std::vector<T>(this->dim));
+
+			std::vector< std::vector<T> > kernels(2, std::vector<T>(this->dim));
             T total_weight[2];
             T best_energy;
             T current_energy;
             uint32_t comp_size = this->components[ind_com].size();
             std::vector<bool> potential_label(comp_size);    
-            std::vector<T> energy_array(comp_size);
-            
+            std::vector<T> energy_array(comp_size);            
             if (this->saturated_components[ind_com] || comp_size <= 1)
             {
                 continue;
@@ -140,53 +157,50 @@ class CutPursuit_L2 : public CutPursuit<T>
             {
 				kernels[0][i_dim] = vertex_attribute_map(this->components[ind_com][first_kernel ]).observation[i_dim];
 			}
-            best_energy = 0; //now compute the square distance of each pouint32_tto this kernel
+            best_energy = 0; //now compute the square distance of each vertex to this kernel
             #pragma omp parallel for if (nb_comp < omp_get_num_threads()) shared(best_energy) schedule(static) 
 			for (uint32_t i_ver = 0;  i_ver < comp_size; i_ver++)
             {
             	energy_array[i_ver] = 0;
-                for(uint32_t i_dim=0; i_dim < this->dim; i_dim++)
+                for(uint32_t i_dim=0; i_dim < dim_spat; i_dim++)
                 {
-                	energy_array[i_ver] += pow(vertex_attribute_map(this->components[ind_com][i_ver]).observation[i_dim]
-                                        - kernels[0][i_dim],2) * vertex_attribute_map(this->components[ind_com][i_ver]).weight;				
+                	energy_array[i_ver] += pow(vertex_attribute_map(this->components[ind_com][i_ver]).observation[i_dim]- kernels[0][i_dim],2) * vertex_attribute_map(this->components[ind_com][i_ver]).weight;				
                 }
 				best_energy += energy_array[i_ver];
              } // we now generate a random number to determinate which node will be the second kernel             
-				T random_sample = ((T)(rand())) / ((T)(RAND_MAX));
-                current_energy = best_energy * random_sample;
-                for (uint32_t i_ver = 0;  i_ver < comp_size; i_ver++)
-                {
-                    current_energy -= energy_array[i_ver];
-                    if (current_energy < 0)
-                    { //we have selected the second kernel
-                        second_kernel = i_ver;        						
-                        break;
-                    }
+			 T random_sample = ((T)(rand())) / ((T)(RAND_MAX));
+             current_energy = best_energy * random_sample;
+             for (uint32_t i_ver = 0;  i_ver < comp_size; i_ver++)
+             {
+             	current_energy -= energy_array[i_ver];
+                if (current_energy < 0)
+                { //we have selected the second kernel
+                	second_kernel = i_ver;        						
+                    break;
                 }
-                for(uint32_t i_dim=0; i_dim < this->dim; i_dim++)
-                { // now fill the second kernel
-                   kernels[1][i_dim] = vertex_attribute_map(this->components[ind_com][second_kernel]).observation[i_dim];
-				}
-                //----main kmeans loop-----
-                for (uint32_t ite_kmeans = 0; ite_kmeans < this->parameter.kmeans_ite; ite_kmeans++)
+            }
+            for(uint32_t i_dim=0; i_dim < this->dim; i_dim++)
+            { // now fill the second kernel
+            	kernels[1][i_dim] = vertex_attribute_map(this->components[ind_com][second_kernel]).observation[i_dim];
+			}
+            //----main kmeans loop-----
+            for (uint32_t ite_kmeans = 0; ite_kmeans < this->parameter.kmeans_ite; ite_kmeans++)
+            {
+                //--affectation step: associate each node with its closest kernel-------------------
+                #pragma omp parallel for if (nb_comp < omp_get_num_threads()) shared(potential_label) schedule(static) 
+				for (uint32_t i_ver = 0;  i_ver < comp_size; i_ver++)
                 {
-                    //--affectation step: associate each node with its closest kernel-------------------
-                    #pragma omp parallel for if (nb_comp < omp_get_num_threads()) shared(potential_label) schedule(static) 
-					for (uint32_t i_ver = 0;  i_ver < comp_size; i_ver++)
+                    std::vector<T> distance_kernels(2);
+                    for(uint32_t i_dim=0; i_dim < dim_spat; i_dim++)
                     {
-                        std::vector<T> distance_kernels(2);
-                        for(uint32_t i_dim=0; i_dim < this->dim; i_dim++)
-                        {
-                           distance_kernels[0] += pow(vertex_attribute_map(this->components[ind_com][i_ver]).observation[i_dim]
-                                                  - kernels[0][i_dim],2);
-                           distance_kernels[1] += pow(vertex_attribute_map(this->components[ind_com][i_ver]).observation[i_dim]
-                                                  - kernels[1][i_dim],2);
-                        }
-                        potential_label[i_ver] = distance_kernels[0] > distance_kernels[1];
-                    }
-                    //-----computation of the new kernels----------------------------
-                    total_weight[0] = 0.;
-                    total_weight[1] = 0.;
+                    	distance_kernels[0] += pow(vertex_attribute_map(this->components[ind_com][i_ver]).observation[i_dim]- kernels[0][i_dim],2);
+                        distance_kernels[1] += pow(vertex_attribute_map(this->components[ind_com][i_ver]).observation[i_dim] - kernels[1][i_dim],2);
+                     }
+                    potential_label[i_ver] = distance_kernels[0] > distance_kernels[1];
+                }
+                //-----computation of the new kernels----------------------------
+                 total_weight[0] = 0.;
+                 total_weight[1] = 0.;
                     for(uint32_t i_dim=0; i_dim < this->dim; i_dim++)
                     {
                        kernels[0][i_dim] = 0;
@@ -217,10 +231,10 @@ class CutPursuit_L2 : public CutPursuit<T>
                                                   * vertex_attribute_map(this->components[ind_com][i_ver]).weight;
                             }
                          }
-                    }    
+                    }  
+
                     if ((total_weight[0] == 0)||(total_weight[1] == 0))
                     {
-						//std::cout << "kmeans error : " << comp_size << std::endl;
                         break;	
                     }
                     for(uint32_t i_dim=0; i_dim < this->dim; i_dim++)
@@ -234,7 +248,7 @@ class CutPursuit_L2 : public CutPursuit<T>
 				#pragma omp parallel for if (nb_comp < omp_get_num_threads()) shared(potential_label) schedule(static) 
                 for (uint32_t i_ver = 0;  i_ver < comp_size; i_ver++)
                 {
-                    for(uint32_t i_dim=0; i_dim < this->dim; i_dim++)
+                    for(uint32_t i_dim=0; i_dim < dim_spat; i_dim++)
                     {
                        if (potential_label[i_ver])
                        {
@@ -279,7 +293,7 @@ class CutPursuit_L2 : public CutPursuit<T>
     }
 
     //=============================================================================================
-    //=============================  COMPUTE_CENTERS_L2  ==========================================
+    //=============================  COMPUTE_CENTER_L2  ==========================================
     //=============================================================================================
     inline void compute_center( std::vector< std::vector<T> > & center, const uint32_t & ind_com
                              , const std::vector<bool> & binary_label)
@@ -291,6 +305,7 @@ class CutPursuit_L2 : public CutPursuit<T>
         T total_weight[2];
         total_weight[0] = 0.;
         total_weight[1] = 0.;
+
         //#pragma omp parallel for if (this->parameter.parallel)
         for (uint32_t i_ver = 0;  i_ver < this->components[ind_com].size(); i_ver++)
         {
@@ -320,7 +335,7 @@ class CutPursuit_L2 : public CutPursuit<T>
         if ((total_weight[0] == 0)||(total_weight[1] == 0))
         {
             //the component is saturated
-            this->saturateComponent(ind_com);
+            //this->saturateComponent(ind_com, false);
             for(uint32_t i_dim=0; i_dim < this->dim; i_dim++)
             {
                 center[0][i_dim] = vertex_attribute_map(this->components[ind_com][0]).value[i_dim];
@@ -335,12 +350,14 @@ class CutPursuit_L2 : public CutPursuit<T>
                 center[1][i_dim] = center[1][i_dim] / total_weight[1];
              }
         }
+
+
     return;
     }
     //=============================================================================================
     //=============================   SET_CAPACITIES     ==========================================
     //=============================================================================================
-    inline void set_capacities(const VectorOfCentroids<T> & centers)
+    inline void set_capacities(const VectorOfCentroids<T> & centers, T unary_weight)
     {
         VertexAttributeMap<T> vertex_attribute_map
                 = boost::get(boost::vertex_bundle, this->main_graph);
@@ -351,8 +368,8 @@ class CutPursuit_L2 : public CutPursuit<T>
 	    uint32_t nb_comp = this->components.size();
 		#pragma omp parallel for if (nb_comp >= omp_get_num_threads()) schedule(dynamic)
         for (uint32_t ind_com = 0; ind_com < nb_comp; ind_com++)
-        {
-			VertexDescriptor<T> desc_v;
+        {	
+	VertexDescriptor<T> desc_v;
 		    EdgeDescriptor   desc_source2v, desc_v2sink, desc_v2source;
 		    T cost_B, cost_notB; //the cost of being in B or not B, local for each component
             if (this->saturated_components[ind_com])
@@ -382,16 +399,17 @@ class CutPursuit_L2 : public CutPursuit<T>
                    cost_notB += 0.5*vertex_attribute_map(desc_v).weight
                               * (pow(centers.centroids[ind_com][1][i_dim],2) - 2 * (centers.centroids[ind_com][1][i_dim]
                               * vertex_attribute_map(desc_v).observation[i_dim]));
-                }
+                
+				}
                 if (cost_B>cost_notB)
                 {
-                    edge_attribute_map(desc_source2v).capacity = cost_B - cost_notB;
+                    edge_attribute_map(desc_source2v).capacity = (cost_B - cost_notB) ;
                     edge_attribute_map(desc_v2sink).capacity   = 0.;
                 }
                 else
                 {
                     edge_attribute_map(desc_source2v).capacity = 0.;
-                    edge_attribute_map(desc_v2sink).capacity   = cost_notB - cost_B;
+                    edge_attribute_map(desc_v2sink).capacity   = (cost_notB - cost_B) ;
                 }
             }
         }
@@ -407,7 +425,7 @@ class CutPursuit_L2 : public CutPursuit<T>
             if (!edge_attribute_map(*i_edg).isActive)
             {
                 edge_attribute_map(*i_edg).capacity
-                        = edge_attribute_map(*i_edg).weight * this->parameter.reg_strenth;
+                        = edge_attribute_map(*i_edg).weight * this->parameter.reg_strenth / unary_weight;
             }
             else
             {
