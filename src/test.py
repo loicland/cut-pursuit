@@ -1,3 +1,4 @@
+sys.path.append("../build/src")
 import libcp
 import numpy as np
 obs = np.array([[10.,20.],[0.,1.],[0.,0. ]], dtype = 'float32')
