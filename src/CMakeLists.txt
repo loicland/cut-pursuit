@@ -1,23 +1,11 @@
 
-CMAKE_MINIMUM_REQUIRED(VERSION 3.5)
-
-PROJECT(CUT_PURSUIT_SEG)
-
-set (CMAKE_CXX_STANDARD 11)
-
-set(CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/CMakeModules ${CMAKE_MODULE_PATH})
-
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -std=c++11 -fopenmp -O3")
-
 ##############################
 ### Find required packages ###
 ##############################
-
-include_directories(../include)
-
 find_package(PythonLibs)
 find_package(PythonInterp)
-find_package(NumPy 1.5 REQUIRED)
+include(FindNumPy)
+include_directories(../include)
 
 find_package(Boost 1.65.0 COMPONENTS graph REQUIRED) #system filesystem thread serialization
 if (${Boost_MINOR_VERSION} LESS 67 )
@@ -42,5 +30,4 @@ message(${Boost_LIBRARIES})
 add_library(cp SHARED cutpursuit.cpp ${CP_HEADERS})
 target_link_libraries(cp
     ${Boost_LIBRARIES}
-    ${PYTHON_LIBRARIES}
-    )
+    ${PYTHON_LIBRARIES})

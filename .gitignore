@@ -2,3 +2,8 @@
 *.dylib
 *.so
 build/
+cmake-build-*
+*.DS_Store
+.devcontainer.json
+Dockerfile
+*.idea
