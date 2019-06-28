@@ -1,3 +1,4 @@
+import sys
 sys.path.append("../build/src")
 import libcp
 import numpy as np
