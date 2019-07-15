@@ -29,14 +29,14 @@
 //void cut_pursuit(const uint32_t n_nodes, const uint32_t n_edges, const uint32_t nObs
 //          ,const T * observation, const uint32_t * Eu, const uint32_t * Ev
 //          ,const T * edgeWeight, const T * nodeWeight
-//          ,T * solution,  const T lambda, const uint32_t cutoff, const T mode, const T speed
+//          ,T * solution,  const T lambda, const uint32_t cutoff, const T mode, const T speed, const T weight_decay
 //          , const float verbose)
 //C++ style input
 //void cut_pursuit(const uint32_t n_nodes, const uint32_t n_edges, const uint32_t nObs
 //          , std::vector< std::vector<T> > & observation
 //          , const std::vector<uint32_t> & Eu, const std::vector<uint32_t> & Ev
 //          ,const std::vector<T> & edgeWeight, const std::vector<T> & nodeWeight
-//          ,std::vector< std::vector<T> > & solution,  const T lambda, const uint32_t cutoff, const T mode, const T speed
+//          ,std::vector< std::vector<T> > & solution,  const T lambda, const uint32_t cutoff, const T mode, const T speed, const T weight_decay
 //          , const float verbose)
 // when D = 1
 //void cut_pursuit(const uint32_t n_nodes, const uint32_t n_edges, const uint32_t nObs
@@ -65,6 +65,7 @@
 //      1 : recommended (default)
 //      2 : fast but approximated (no backward step)
 //      3 : ludicrous - for prototyping (no backward step)
+// 1x1 float weight_decay : weight decay to compute the optimal binary partition
 // 1x1 bool verose : verbosity
 //      0 : silent
 //      1 : recommended (default)
@@ -92,7 +93,7 @@
 //          , uint32_t & n_nodes_red, uint32_t & n_edges_red
 //          , std::vector<uint32_t> & Eu_red, std::vector<uint32_t> & Ev_red
 //          , std::vector<T> & edgeWeight_red, std::vector<T> & nodeWeight_red
-//  	    , const T lambda, const T mode, const T speed
+//  	    , const T lambda, const T mode, const T speed, const T weight_decay
 //          , const float verbose)
 //-----EXTRA INPUT-----
 // Nx1 uint32_t inComponent: for each node, in which component it belongs
@@ -183,7 +184,7 @@ template<typename T>
 void cut_pursuit(const uint32_t n_nodes, const uint32_t n_edges, const uint32_t nObs
           ,const T * observation, const uint32_t * Eu, const uint32_t * Ev
           ,const T * edgeWeight, const T * nodeWeight
-          ,T * solution, const T lambda, const uint32_t cutoff, const T mode, const T speed
+          ,T * solution, const T lambda, const uint32_t cutoff, const T mode, const T speed, const T weight_decay
           , const float verbose)
 {   //C-style interface
     std::srand (1);
@@ -193,7 +194,7 @@ void cut_pursuit(const uint32_t n_nodes, const uint32_t n_edges, const uint32_t 
     }
     //--------parameterization---------------------------------------------
     CP::CutPursuit<T> * cp = create_CP(mode, verbose);
-    set_speed(cp, speed, verbose);
+    set_speed(cp, speed, weight_decay, verbose);
     set_up_CP(cp, n_nodes, n_edges, nObs, observation, Eu, Ev
              ,edgeWeight, nodeWeight);
     cp->parameter.reg_strenth = lambda;
@@ -228,7 +229,7 @@ void cut_pursuit(const uint32_t n_nodes, const uint32_t n_edges, const uint32_t 
           , const T * edgeWeight, const T * nodeWeight
           , T * solution
 	  , std::vector<uint32_t> & in_component, std::vector< std::vector<uint32_t> > & components
-  	  , const T lambda, const uint32_t cutoff, const T mode, const T speed
+  	  , const T lambda, const uint32_t cutoff, const T mode, const T speed, const T weight_decay
           , const float verbose)
 {   //C-style ++ interface
     std::srand (1);
@@ -239,7 +240,7 @@ void cut_pursuit(const uint32_t n_nodes, const uint32_t n_edges, const uint32_t 
     }
     //--------parameterization---------------------------------------------
     CP::CutPursuit<T> * cp = create_CP(mode, verbose);
-    set_speed(cp, speed, verbose);
+    set_speed(cp, speed, weight_decay, verbose);
     set_up_CP(cp, n_nodes, n_edges, nObs, observation, Eu, Ev
              ,edgeWeight, nodeWeight);
     cp->parameter.reg_strenth = lambda;
@@ -296,7 +297,7 @@ void cut_pursuit(const uint32_t n_nodes, const uint32_t n_edges, const uint32_t 
           , std::vector< std::vector<T> > & observation
           , const std::vector<uint32_t> & Eu, const std::vector<uint32_t> & Ev
           , const std::vector<T> & edgeWeight, const std::vector<T> & nodeWeight
-          , std::vector< std::vector<T> > & solution,  const T lambda, const uint32_t cutoff, const T mode, const T speed
+          , std::vector< std::vector<T> > & solution,  const T lambda, const uint32_t cutoff, const T mode, const T speed, const T weight_decay
           , const float verbose)
 {   //C-style ++ interface
     std::srand (1);
@@ -306,7 +307,7 @@ void cut_pursuit(const uint32_t n_nodes, const uint32_t n_edges, const uint32_t 
     }
     //--------parameterization---------------------------------------------
     CP::CutPursuit<T> * cp = create_CP(mode, verbose);
-    set_speed(cp, speed, verbose);
+    set_speed(cp, speed, weight_decay, verbose);
     set_up_CP(cp, n_nodes, n_edges, nObs, observation, Eu, Ev
              ,edgeWeight, nodeWeight);
     cp->parameter.reg_strenth = lambda;
@@ -336,7 +337,7 @@ void cut_pursuit(const uint32_t n_nodes, const uint32_t n_edges, const uint32_t 
           , std::vector<T>& observation
           , const std::vector<uint32_t> & Eu, const std::vector<uint32_t> & Ev
           , const std::vector<T> & edgeWeight, const std::vector<T> & nodeWeight
-          , std::vector<T> & solution,  const T lambda, const uint32_t cutoff, const T mode, const T speed
+          , std::vector<T> & solution,  const T lambda, const uint32_t cutoff, const T mode, const T speed, const T weight_decay
           , const float verbose)
 {   //C-style ++ interface
     std::srand (1);
@@ -346,7 +347,7 @@ void cut_pursuit(const uint32_t n_nodes, const uint32_t n_edges, const uint32_t 
     }
     //--------parameterization---------------------------------------------
     CP::CutPursuit<T> * cp = create_CP(mode, verbose);
-    set_speed(cp, speed, verbose);
+    set_speed(cp, speed, weight_decay, verbose);
     set_up_CP(cp, n_nodes, n_edges, nObs, observation, Eu, Ev
              ,edgeWeight, nodeWeight);
     cp->parameter.reg_strenth = lambda;
@@ -379,7 +380,7 @@ void cut_pursuit(const uint32_t n_nodes, const uint32_t n_edges, const uint32_t 
           , uint32_t & n_nodes_red, uint32_t & n_edges_red
           , std::vector<uint32_t> & Eu_red, std::vector<uint32_t> & Ev_red
           , std::vector<T> & edgeWeight_red, std::vector<T> & nodeWeight_red
-  	  , const T lambda, const uint32_t cutoff, const T mode, const T speed
+  	  , const T lambda, const uint32_t cutoff, const T mode, const T speed, const T weight_decay
           , const float verbose)
 {   //C-style ++ interface
     std::srand (1);
@@ -391,11 +392,12 @@ void cut_pursuit(const uint32_t n_nodes, const uint32_t n_edges, const uint32_t 
     //--------parameterization---------------------------------------------
     CP::CutPursuit<T> * cp = create_CP(mode, verbose);
 
-    set_speed(cp, speed, verbose);
+    set_speed(cp, speed, weight_decay, verbose);
     set_up_CP(cp, n_nodes, n_edges, nObs, observation, Eu, Ev
              ,edgeWeight, nodeWeight);
     cp->parameter.reg_strenth = lambda;
 	cp->parameter.cutoff = cutoff;
+
     //-------run the optimization------------------------------------------
     cp->run();
     cp->compute_reduced_graph();
@@ -473,7 +475,7 @@ void cut_pursuit(const uint32_t n_nodes, const uint32_t n_edges, const uint32_t 
           , const std::vector<T> & edgeWeight, const std::vector<T> & nodeWeight
           , std::vector< std::vector<T> > & solution
 	  , std::vector<uint32_t> & in_component, std::vector< std::vector<uint32_t> > & components
-  	  , const T lambda, const uint32_t cutoff, const T mode, const T speed
+  	  , const T lambda, const uint32_t cutoff, const T mode, const T speed, const T weight_decay
           , const float verbose)
 {   //C-style ++ interface
     std::srand (1);
@@ -485,7 +487,7 @@ void cut_pursuit(const uint32_t n_nodes, const uint32_t n_edges, const uint32_t 
     //--------parameterization---------------------------------------------
     CP::CutPursuit<T> * cp = create_CP(mode, verbose);
 
-    set_speed(cp, speed, verbose);
+    set_speed(cp, speed, weight_decay, verbose);
     set_up_CP(cp, n_nodes, n_edges, nObs, observation, Eu, Ev
              ,edgeWeight, nodeWeight);
     cp->parameter.reg_strenth = lambda;
@@ -544,7 +546,7 @@ void cut_pursuit(const uint32_t n_nodes, const uint32_t n_edges, const uint32_t 
           , uint32_t & n_nodes_red, uint32_t & n_edges_red
           , std::vector<uint32_t> & Eu_red, std::vector<uint32_t> & Ev_red
           , std::vector<T> & edgeWeight_red, std::vector<T> & nodeWeight_red
-  	  , const T lambda, const uint32_t cutoff, const T mode, const T speed
+  	  , const T lambda, const uint32_t cutoff, const T mode, const T speed, const T weight_decay
           , const float verbose)
 {   //C-style ++ interface
     std::srand (1);
@@ -556,7 +558,7 @@ void cut_pursuit(const uint32_t n_nodes, const uint32_t n_edges, const uint32_t 
     //--------parameterization---------------------------------------------
     CP::CutPursuit<T> * cp = create_CP(mode, verbose);
 
-    set_speed(cp, speed, verbose);
+    set_speed(cp, speed, weight_decay, verbose);
     set_up_CP(cp, n_nodes, n_edges, nObs, observation, Eu, Ev
              ,edgeWeight, nodeWeight);
     cp->parameter.reg_strenth = lambda;
@@ -648,7 +650,7 @@ void cut_pursuit(const uint32_t n_nodes, const uint32_t n_edges, const uint32_t 
           , uint32_t & n_nodes_red, uint32_t & n_edges_red
           , std::vector<uint32_t> & Eu_red, std::vector<uint32_t> & Ev_red
           , std::vector<T> & edgeWeight_red, std::vector<T> & nodeWeight_red
-  	  , const T lambda, const uint32_t cutoff, const T mode, const T speed
+  	  , const T lambda, const uint32_t cutoff, const T mode, const T speed, const T weight_decay
           , const float verbose)
 {   //C-style ++ interface
     std::srand (1);
@@ -660,7 +662,7 @@ void cut_pursuit(const uint32_t n_nodes, const uint32_t n_edges, const uint32_t 
     //--------parameterization---------------------------------------------
     CP::CutPursuit<T> * cp = create_CP(mode, verbose);
 
-    set_speed(cp, speed, verbose);
+    set_speed(cp, speed, weight_decay, verbose);
     set_up_CP(cp, n_nodes, n_edges, nObs, observation, Eu, Ev
              ,edgeWeight, nodeWeight);
     cp->parameter.reg_strenth = lambda;
@@ -743,7 +745,7 @@ void cut_pursuit(const uint32_t n_nodes, const uint32_t n_edges, const uint32_t 
           , uint32_t & n_nodes_red, uint32_t & n_edges_red
           , std::vector<uint32_t> & Eu_red, std::vector<uint32_t> & Ev_red
           , std::vector<T> & edgeWeight_red, std::vector<T> & nodeWeight_red
-  	  , const T lambda,  const uint32_t cutoff,const T mode, const T speed
+  	  , const T lambda,  const uint32_t cutoff,const T mode, const T speed, const T weight_decay
           , const float verbose)
 {   //C-style ++ interface
     std::srand (1);
@@ -755,7 +757,7 @@ void cut_pursuit(const uint32_t n_nodes, const uint32_t n_edges, const uint32_t 
     //--------parameterization---------------------------------------------
     CP::CutPursuit<T> * cp = create_CP(mode, verbose);
 
-    set_speed(cp, speed, verbose);
+    set_speed(cp, speed, weight_decay, verbose);
     set_up_CP(cp, n_nodes, n_edges, nObs, observation, Eu, Ev
              ,edgeWeight, nodeWeight);
     cp->parameter.reg_strenth = lambda;
@@ -954,7 +956,7 @@ void set_up_CP(CP::CutPursuit<T> * cp, const uint32_t n_nodes, const uint32_t n_
 //=====================      SET SPEED    ===================================
 //===========================================================================
 template<typename T>
-void set_speed(CP::CutPursuit<T> * cp, const T speed, const float verbose)
+void set_speed(CP::CutPursuit<T> * cp, const T speed, const T weight_decay, const float verbose)
 {
     if (speed == 4)
     {
@@ -963,7 +965,7 @@ void set_speed(CP::CutPursuit<T> * cp, const T speed, const float verbose)
             std::cout << "PARAMETERIZATION = SPECIAL SUPERPOINTGRAPH" << std::endl;
         }
         cp->parameter.flow_steps  = 3;
-		cp->parameter.weight_decay = 0.7;
+		cp->parameter.weight_decay = weight_decay;
         cp->parameter.kmeans_ite  = 5;
         cp->parameter.kmeans_resampling = 10;
         cp->parameter.max_ite_main = 15;
@@ -977,6 +979,7 @@ void set_speed(CP::CutPursuit<T> * cp, const T speed, const float verbose)
             std::cout << "PARAMETERIZATION = LUDICROUS SPEED" << std::endl;
         }
         cp->parameter.flow_steps  = 1;
+        cp->parameter.weight_decay = weight_decay;
         cp->parameter.kmeans_ite  = 3;
         cp->parameter.kmeans_resampling = 1;
         cp->parameter.max_ite_main = 5;
@@ -990,6 +993,7 @@ void set_speed(CP::CutPursuit<T> * cp, const T speed, const float verbose)
             std::cout << "PARAMETERIZATION = FAST" << std::endl;
         }
         cp->parameter.flow_steps  = 2;
+        cp->parameter.weight_decay = weight_decay;
         cp->parameter.kmeans_ite  = 5;
         cp->parameter.kmeans_resampling = 2;
         cp->parameter.max_ite_main = 5;
@@ -1003,6 +1007,7 @@ void set_speed(CP::CutPursuit<T> * cp, const T speed, const float verbose)
             std::cout << "PARAMETERIZATION = SLOW" << std::endl;
         }
         cp->parameter.flow_steps  = 4;
+        cp->parameter.weight_decay = weight_decay;
         cp->parameter.kmeans_ite  = 8;
         cp->parameter.kmeans_resampling = 5;
         cp->parameter.max_ite_main = 20;
@@ -1016,6 +1021,7 @@ void set_speed(CP::CutPursuit<T> * cp, const T speed, const float verbose)
             std::cout << "PARAMETERIZATION = STANDARD" << std::endl;
         }
         cp->parameter.flow_steps  = 3;
+        cp->parameter.weight_decay = weight_decay;
         cp->parameter.kmeans_ite  = 5;
         cp->parameter.kmeans_resampling = 2;
         cp->parameter.max_ite_main = 10;
