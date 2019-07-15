@@ -75,7 +75,7 @@ struct to_py_tuple
 };
 
 PyObject * cutpursuit(const bpn::ndarray & obs, const bpn::ndarray & source, const bpn::ndarray & target,const bpn::ndarray & edge_weight,
-                      float lambda, const int cutoff, const int spatial)
+                      float lambda, const int cutoff, const int spatial, float weight_decay)
 {//read data and run the L0-cut pursuit partition algorithm
     srand(0);
 
@@ -94,12 +94,12 @@ PyObject * cutpursuit(const bpn::ndarray & obs, const bpn::ndarray & source, con
     if (spatial == 0)
     {
         CP::cut_pursuit<float>(n_ver, n_edg, n_obs, obs_data, source_data, target_data, edge_weight_data, &node_weight[0]
-                 , solution.data(), in_component, components, lambda, (uint32_t)cutoff,  1.f, 4.f, 1.f);
+                 , solution.data(), in_component, components, lambda, (uint32_t)cutoff,  1.f, 4.f, weight_decay, 1.f);
     }
     else
     {
         CP::cut_pursuit<float>(n_ver, n_edg, n_obs, obs_data, source_data, target_data, edge_weight_data, &node_weight[0]
-                 , solution.data(), in_component, components, lambda, (uint32_t)cutoff,  2.f, 4.f, 1.f);
+                 , solution.data(), in_component, components, lambda, (uint32_t)cutoff,  2.f, 4.f, weight_decay, 1.f);
     }
     return to_py_tuple::convert(Custom_tuple(components, in_component));
 }
@@ -123,7 +123,7 @@ std::cout << std::endl;
     std::vector<uint32_t> in_component(n_ver,0);
     std::vector< std::vector<uint32_t> > components(1,std::vector<uint32_t>(1,0.f));
     CP::cut_pursuit<float>(n_ver, n_edg, n_obs, obs_data, source_data, target_data, edge_weight_data, node_weight_data
-                 , solution.data(), in_component, components, lambda, (uint32_t)0,  2.f, 4.f, 1.f);
+                 , solution.data(), in_component, components, lambda, (uint32_t)0,  2.f, 4.f, 1.f, 1.f);
     return to_py_tuple::convert(Custom_tuple(components, in_component));
 }
 
@@ -135,7 +135,7 @@ BOOST_PYTHON_MODULE(libcp)
     bp::to_python_converter< Custom_tuple, to_py_tuple>();
     //def("connected_comp", connected_comp);
     def("cutpursuit", cutpursuit);
-    def("cutpursuit", cutpursuit, (bp::args("cutoff")=0, bp::args("spatial")=0));
+    def("cutpursuit", cutpursuit, (bp::args("cutoff")=0, bp::args("spatial")=0, bp::args("weight_decay")=1));
     def("cutpursuit2", cutpursuit2);
 }
 
