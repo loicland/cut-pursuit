@@ -94,12 +94,12 @@ PyObject * cutpursuit(const bpn::ndarray & obs, const bpn::ndarray & source, con
     if (spatial == 0)
     {
         CP::cut_pursuit<float>(n_ver, n_edg, n_obs, obs_data, source_data, target_data, edge_weight_data, &node_weight[0]
-                 , solution.data(), in_component, components, lambda, (uint32_t)cutoff,  1.f, 4.f, weight_decay, 1.f);
+                 , solution.data(), in_component, components, lambda, (uint32_t)cutoff,  1.f, 4.f, weight_decay, 0.f);
     }
     else
     {
         CP::cut_pursuit<float>(n_ver, n_edg, n_obs, obs_data, source_data, target_data, edge_weight_data, &node_weight[0]
-                 , solution.data(), in_component, components, lambda, (uint32_t)cutoff,  2.f, 4.f, weight_decay, 1.f);
+                 , solution.data(), in_component, components, lambda, (uint32_t)cutoff,  2.f, 4.f, weight_decay, 0.f);
     }
     return to_py_tuple::convert(Custom_tuple(components, in_component));
 }
