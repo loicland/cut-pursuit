@@ -134,7 +134,9 @@ class CutPursuit_SPG : public CutPursuit<T>
 			dim_spat = this->dim;
 		}
 
+        #ifdef OPENMP
 		#pragma omp parallel for if (nb_comp >= omp_get_num_threads()) schedule(dynamic) 
+        #endif
         for (uint32_t ind_com = 0; ind_com < nb_comp; ind_com++)
         {
 
@@ -158,7 +160,9 @@ class CutPursuit_SPG : public CutPursuit<T>
 				kernels[0][i_dim] = vertex_attribute_map(this->components[ind_com][first_kernel ]).observation[i_dim];
 			}
             best_energy = 0; //now compute the square distance of each vertex to this kernel
+            #ifdef OPENMP
             #pragma omp parallel for if (nb_comp < omp_get_num_threads()) shared(best_energy) schedule(static) 
+            #endif
 			for (uint32_t i_ver = 0;  i_ver < comp_size; i_ver++)
             {
             	energy_array[i_ver] = 0;
@@ -187,7 +191,9 @@ class CutPursuit_SPG : public CutPursuit<T>
             for (uint32_t ite_kmeans = 0; ite_kmeans < this->parameter.kmeans_ite; ite_kmeans++)
             {
                 //--affectation step: associate each node with its closest kernel-------------------
+                #ifdef OPENMP
                 #pragma omp parallel for if (nb_comp < omp_get_num_threads()) shared(potential_label) schedule(static) 
+                #endif
 				for (uint32_t i_ver = 0;  i_ver < comp_size; i_ver++)
                 {
                     std::vector<T> distance_kernels(2);
@@ -206,7 +212,9 @@ class CutPursuit_SPG : public CutPursuit<T>
                        kernels[0][i_dim] = 0;
                        kernels[1][i_dim] = 0;
                     }
+                    #ifdef OPENMP
 					#pragma omp parallel for if (nb_comp < omp_get_num_threads()) shared(potential_label) schedule(static) 
+                    #endif
                     for (uint32_t i_ver = 0;  i_ver < comp_size; i_ver++)
                     {
                         if (vertex_attribute_map(this->components[ind_com][i_ver]).weight==0)
@@ -245,7 +253,9 @@ class CutPursuit_SPG : public CutPursuit<T>
                 }
                 //----compute the associated energy ------
                 current_energy = 0;
+                #ifdef OPENMP
 				#pragma omp parallel for if (nb_comp < omp_get_num_threads()) shared(potential_label) schedule(static) 
+                #endif
                 for (uint32_t i_ver = 0;  i_ver < comp_size; i_ver++)
                 {
                     for(uint32_t i_dim=0; i_dim < dim_spat; i_dim++)
@@ -280,7 +290,9 @@ class CutPursuit_SPG : public CutPursuit<T>
                                , const std::vector<bool> & binary_label)
     {
         //compute for each component the values of h_1 and h_2
+        #ifdef OPENMP
         #pragma omp parallel for if (nb_comp >= omp_get_num_threads()) schedule(dynamic)
+        #endif
         for (uint32_t ind_com = 0; ind_com < nb_comp; ind_com++)
         {
             if (this->saturated_components[ind_com])
@@ -366,7 +378,9 @@ class CutPursuit_SPG : public CutPursuit<T>
         //----first compute the capacity in sink/node edges------------------------------------
         //#pragma omp parallel for if (this->parameter.parallel) schedule(dynamic)
 	    uint32_t nb_comp = this->components.size();
+        #ifdef OPENMP
 		#pragma omp parallel for if (nb_comp >= omp_get_num_threads()) schedule(dynamic)
+        #endif
         for (uint32_t ind_com = 0; ind_com < nb_comp; ind_com++)
         {	
 	VertexDescriptor<T> desc_v;
@@ -443,7 +457,9 @@ class CutPursuit_SPG : public CutPursuit<T>
         T total_weight = 0;
         std::vector<T> compValue(this->dim);
         std::fill((compValue.begin()),(compValue.end()),0);
+        #ifdef OPENMP
         #pragma omp parallel for if (this->parameter.parallel) schedule(static)
+        #endif
         for (uint32_t ind_ver = 0; ind_ver < this->components[ind_com].size(); ++ind_ver)
         {
             total_weight += vertex_attribute_map(this->components[ind_com][ind_ver]).weight;

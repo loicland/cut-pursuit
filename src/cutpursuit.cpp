@@ -133,7 +133,7 @@ BOOST_PYTHON_MODULE(libcp)
     Py_Initialize();
     bpn::initialize();
     bp::to_python_converter< Custom_tuple, to_py_tuple>();
-    //def("connected_comp", connected_comp);
+    
     def("cutpursuit", cutpursuit);
     def("cutpursuit", cutpursuit, (bp::args("cutoff")=0, bp::args("spatial")=0, bp::args("weight_decay")=1));
     def("cutpursuit2", cutpursuit2);
