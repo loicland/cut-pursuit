@@ -463,7 +463,9 @@ class CutPursuit
         this->reduced_graph = Graph<T>(this->components.size());
         VertexAttributeMap<T> component_attribute_map = boost::get(boost::vertex_bundle, this->reduced_graph);
         //----fill the value sof the reduced graph----
+        #ifdef OPENMP
         #pragma omp parallel for schedule(dynamic) 
+        #endif
         for (uint32_t ind_com = 0;  ind_com < this->components.size(); ind_com++)
         {
             std::pair<std::vector<T>, T> component_values_and_weight = this->compute_value(ind_com);

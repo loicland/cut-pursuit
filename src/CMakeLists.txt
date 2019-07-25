@@ -7,6 +7,12 @@ find_package(PythonInterp)
 include(FindNumPy)
 include_directories(../include)
 
+find_package(OpenMP)
+if (${OpenMP_CXX_FOUND})
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}${OpenMP_CXX_FLAGS}")
+    add_definitions(-DOPENMP)
+endif()
+
 find_package(Boost 1.65.0 COMPONENTS graph REQUIRED) #system filesystem thread serialization
 if (${Boost_MINOR_VERSION} LESS 67 )
     find_package(Boost 1.65.0 COMPONENTS numpy${PYTHON_VERSION_MAJOR} REQUIRED) #system filesystem thread serialization
@@ -25,7 +31,7 @@ LINK_DIRECTORIES(${PYTHON_LIBRARY_DIRS})
 
 file(GLOB CP_HEADERS include/*.h)
 
-set(CMAKE_LD_FLAG "${CMAKE_LD_FLAGS} -shared -Wl -fPIC --export-dynamic -o -O3 -Wall -std=c++11")
+set(CMAKE_LD_FLAG "${CMAKE_LD_FLAGS} -shared -Wl -fPIC --export-dynamic -o -O3 -Wall")
 message(${Boost_LIBRARIES})
 add_library(cp SHARED cutpursuit.cpp ${CP_HEADERS})
 target_link_libraries(cp
