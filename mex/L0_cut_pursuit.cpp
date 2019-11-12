@@ -60,10 +60,12 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[])
     const float * edgeWeight  = (float *) mxGetData(prhs[4]);
     const float * nodeWeight  = (float *) mxGetData(prhs[5]);
     const float mode          = (float) mxGetScalar(prhs[6]);
-    const float speed         = (float) mxGetScalar(prhs[7]);
-    const float verbose       = (float) mxGetScalar(prhs[8]);    
+    const uint32_t cutoff     = (uint32_t) mxGetScalar(prhs[7]);
+    const float speed         = (float) mxGetScalar(prhs[8]);
+    const float weight_decay  = (float) mxGetScalar(prhs[9]);    
+    const float verbose       = (float) mxGetScalar(prhs[10]);    
     float * solution          = (float *) mxGetData(plhs[0]);
 
     CP::cut_pursuit<float>(nNod, nEdg, nObs, y
-      , Eu, Ev, edgeWeight, nodeWeight, solution, lambda, mode, speed,verbose);
+      , Eu, Ev, edgeWeight, nodeWeight, solution, lambda, cutoff,  mode, speed, weight_decay, verbose);
 }

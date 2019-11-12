@@ -73,8 +73,10 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[])
     const std::vector<float> edge_weight((float*)mxGetData(prhs[4]), (float*)mxGetData(prhs[4])+nEdg);
     const std::vector<float> node_weight((float*)mxGetData(prhs[5]), (float*)mxGetData(prhs[5])+n_nodes);
     const float mode          = (float) mxGetScalar(prhs[6]); //fidelity
-    const float speed         = (float) mxGetScalar(prhs[7]); //speed mode
-    const float verbose       = (float) mxGetScalar(prhs[8]); //verbosity*/
+    const uint32_t cutoff     = (uint32_t) mxGetScalar(prhs[7]); //cut off
+    const float speed         = (float) mxGetScalar(prhs[8]); //speed mode
+    const float weight_decay  = (float) mxGetScalar(prhs[9]); //weight decay*/
+    const float verbose       = (float) mxGetScalar(prhs[10]); //verbosity*/
     //--fill the observation----
     const float *observation_array = (float*) mxGetData(prhs[0]);
     std::vector< std::vector<float> > solution(n_nodes);
@@ -106,7 +108,7 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[])
             , in_component, components
             , n_nodes_red, n_edges_red,  Eu_red, Ev_red
             , edge_weight_red,node_weight_red
-            ,lambda, mode, speed,verbose);
+            ,lambda, cutoff, mode, speed, weight_decay, verbose);
     }
     if (true)
     {

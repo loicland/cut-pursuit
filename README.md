@@ -61,9 +61,17 @@ Eu = 0:(n_nodes-2);
 Ev = 1:(n_nodes-1);
 edge_weight = ones(numel(Eu),1);
 node_weight = ones(n_nodes,1);
-  
-[solution, in_component, components] = L0_cut_pursuit_segmentation(single(y), uint32(Eu), uint32(Ev), single(.1)...
-    , single(edge_weight), single(node_weight), 1, 2, 2);
+lambda = .1;
+mode = 1;
+cutoff = 0;
+weigth_decay = 0;
+speedmode = 2;
+verbosity = 2;
+
+[solution, in_component, components] = L0_cut_pursuit_segmentation(single(y),...
+        uint32(Eu), uint32(Ev), single(lambda),...
+        single(edge_weight), single(node_weight), mode, cutoff, speedmode,...
+        weigth_decay, verbosity);
 
 subplot(3,1,1)
 imagesc(repmat(y, [1 1 1]))
