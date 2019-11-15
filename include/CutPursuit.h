@@ -566,8 +566,8 @@ class CutPursuit
             //retrieve the two components corresponding to this border
             source_component = boost::source(border_edge_current, this->reduced_graph);
             target_component = boost::target(border_edge_current, this->reduced_graph);
-            if (is_cutoff && component_attribute_map(source_component).weight > this->parameter.cutoff
-              &&component_attribute_map(target_component).weight > this->parameter.cutoff)
+            if (is_cutoff && component_attribute_map(source_component).weight >= this->parameter.cutoff
+              &&component_attribute_map(target_component).weight >= this->parameter.cutoff)
             {
                 continue;
             }

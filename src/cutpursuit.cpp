@@ -74,6 +74,21 @@ struct to_py_tuple
     }
 };
 
+struct to_py_tuple_list
+{//converts output to a python list of tuples
+    static PyObject* convert(const std::vector <Custom_tuple > & c_tuple_vec){
+        int n_hierarchy = c_tuple_vec.size();
+        bp::list values;
+        //add all c_tuple items to "values" list
+        for (int i_hierarchy = 0; i_hierarchy < n_hierarchy; i_hierarchy++)
+        {
+            PyObject * tuple_pyo = to_py_tuple::convert(c_tuple_vec[i_hierarchy]);
+            values.append(bp::handle<>(bp::borrowed(tuple_pyo)));
+        }
+        return bp::incref(values.ptr());
+    }
+};
+
 PyObject * cutpursuit(const bpn::ndarray & obs, const bpn::ndarray & source, const bpn::ndarray & target,const bpn::ndarray & edge_weight,
                       float lambda, const int cutoff, const int spatial, float weight_decay)
 {//read data and run the L0-cut pursuit partition algorithm
@@ -104,11 +119,77 @@ PyObject * cutpursuit(const bpn::ndarray & obs, const bpn::ndarray & source, con
     return to_py_tuple::convert(Custom_tuple(components, in_component));
 }
 
+PyObject * cutpursuit_hierarchy(const bpn::ndarray & obs, const bpn::ndarray & source, const bpn::ndarray & target, const bpn::ndarray & edge_weight,
+                      const bpn::ndarray & lambda, const bpn::ndarray & cutoff, const int spatial, float weight_decay)
+{//read data and run the L0-cut pursuit partition algorithm
+    srand(0);
+    uint32_t n_ver = bp::len(obs);
+    uint32_t n_edg = bp::len(source);
+    const uint32_t n_obs = bp::len(obs[0]);
+    const uint32_t n_hierarchy = bp::len(lambda);
+    float * obs_data = reinterpret_cast<float*>(obs.get_data());
+    uint32_t * source_data = reinterpret_cast<uint32_t*>(source.get_data());
+    uint32_t * target_data = reinterpret_cast<uint32_t*>(target.get_data());
+    float * edge_weight_data = reinterpret_cast<float*>(edge_weight.get_data());
+    const float * lambda_data = reinterpret_cast<float*>(lambda.get_data());
+    const uint32_t * cutoff_data = reinterpret_cast<uint32_t*>(cutoff.get_data());
+    std::vector<float> node_weight(n_ver, 1.0f);
+    //prepare outputs
+    std::vector<float> solution(n_ver *n_obs);
+    std::vector<uint32_t> in_component(n_ver,0);
+    std::vector< std::vector<uint32_t> > components(1,std::vector<uint32_t>(1,0.f));
+    //prepare hierarchical intermediaries
+    uint32_t n_nodes_red;
+    uint32_t n_edges_red;
+    std::vector<uint32_t> Eu_red(1,0);
+    std::vector<uint32_t> Ev_red(1,0);
+    std::vector< float > edgeWeight_red(1,0);
+    std::vector< float > nodeWeight_red(1,0);
+    //prepare list of outputs
+    std::vector< Custom_tuple > output_hierarchy(n_hierarchy);
+    for (int ite_hierarchy = 0; ite_hierarchy < n_hierarchy; ite_hierarchy++)
+    {
+        if (spatial == 0)
+        {
+            CP::cut_pursuit<float>(n_ver, n_edg, n_obs, obs_data, source_data, target_data, edge_weight_data, &node_weight[0]
+                     , solution.data(), in_component, components
+                     , n_nodes_red, n_edges_red, Eu_red, Ev_red, edgeWeight_red, nodeWeight_red
+                     , lambda_data[ite_hierarchy], (uint32_t)cutoff_data[ite_hierarchy],  1.f, 4.f, weight_decay, 0.f);
+        }
+        else
+        {
+            CP::cut_pursuit<float>(n_ver, n_edg, n_obs, obs_data, source_data, target_data, edge_weight_data, &node_weight[0]
+                     , solution.data(), in_component, components
+                     , n_nodes_red, n_edges_red, Eu_red, Ev_red, edgeWeight_red, nodeWeight_red
+                     , lambda_data[ite_hierarchy], (uint32_t)cutoff_data[ite_hierarchy],  2.f, 4.f, weight_decay, 0.f);
+        }
+        n_ver = n_nodes_red;
+        n_edg = n_edges_red;
+        source_data = Eu_red.data();
+        target_data = Ev_red.data();
+        edge_weight_data = edgeWeight_red.data();
+        node_weight = nodeWeight_red;
+        uint32_t ind_sol = 0;
+        int index = 0;
+        for(uint32_t ind_comp = 0; ind_comp < n_ver; ind_comp++ )
+        {
+            for(uint32_t i_obs=0; i_obs < n_obs; i_obs++)
+            {
+                obs_data[index] = solution[components[ind_comp][0] * n_obs + i_obs];
+                index++;
+            }
+        }
+        solution = std::vector<float> (n_ver * n_obs,0.);
+        output_hierarchy[ite_hierarchy] = Custom_tuple(components, in_component);
+    }
+
+    return to_py_tuple_list::convert(output_hierarchy);
+}
+
 PyObject * cutpursuit2(const bpn::ndarray & obs, const bpn::ndarray & source, const bpn::ndarray & target,const bpn::ndarray & edge_weight,
                        const bpn::ndarray & node_weight, float lambda)
 {//read data and run the L0-cut pursuit partition algorithm
     srand(0);
-std::cout << std::endl;
     const uint32_t n_ver = bp::len(obs);
     const uint32_t n_edg = bp::len(source);
     const uint32_t n_obs = bp::len(obs[0]);
@@ -136,6 +217,7 @@ BOOST_PYTHON_MODULE(libcp)
     
     def("cutpursuit", cutpursuit);
     def("cutpursuit", cutpursuit, (bp::args("cutoff")=0, bp::args("spatial")=0, bp::args("weight_decay")=1));
+    def("cutpursuit_hierarchy", cutpursuit_hierarchy, (bp::args("cutoff")=0, bp::args("spatial")=0, bp::args("weight_decay")=1));
     def("cutpursuit2", cutpursuit2);
 }
 
